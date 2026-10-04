@@ -85,3 +85,10 @@
 
 /* Give the tiers leaderboard a little more space from the viewport edges. */
 .tier-page .tiers-main{padding-left:clamp(16px,2vw,32px);padding-right:clamp(16px,2vw,32px)}
+
+/* Align store content and tiers leaderboard to the same responsive page gutter. */
+.store-main.shell{width:auto;max-width:none;margin-left:clamp(24px,5vw,64px);margin-right:clamp(24px,5vw,64px)}
+.tier-page .tiers-main{padding-left:clamp(24px,5vw,64px);padding-right:clamp(24px,5vw,64px)}
+
+/* Center the home hero in the available viewport height without adding page height. */
+@media(min-width:651px){.home-page .home-main{flex:1;min-height:0;justify-content:center}}
