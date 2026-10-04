@@ -45,7 +45,7 @@ The port is published only on host loopback so the VPS reverse proxy can termina
 - `API_SERVER_BASE_URL`, `API_SERVER_API_KEY`: points API connection. Use a dedicated **leaderboards:read** key and TLS for any non-localhost connection. Older `POINTS_API_BASE_URL`/`POINTS_API_KEY` aliases are accepted. API credentials never appear in pages or browser code.
 - Avatar images use the fixed `https://render.crafty.gg` CDN origin. A public API image origin is no longer required; `API_SERVER_PUBLIC_BASE_URL` is unused.
 - `MINECRAFT_ADDRESS`, `DISCORD_URL`: server address (default `play.strafemc.net`) and community link. Missing Discord configuration keeps the navigation label visible without creating a guessed invite URL.
-- `HERO_IMAGE_URL`: optional HTTPS override for the server image. The original Figma server image, glow and interface icons are shipped locally in `public/design`; Archivo and Azeret Mono are self-hosted with their OFL licenses in `public/fonts`.
+- `HERO_IMAGE_URL`: optional HTTPS override for the server image. The default server preview (`public/design/Hero_Image.png`), glow and interface icons are shipped locally in `public/design`; Archivo and Azeret Mono are self-hosted with their OFL licenses in `public/fonts`.
 - `SERVER_ONLINE_COUNT`: optional manually configured online count. Omit it to hide the count; no live status is invented.
 - SMP columns use cumulative population cutoffs: S top 0.1%, A top 1%, B top 5%, C top 20%, F the remainder. Cutoffs round upward and reserve one entry per tier when at least five entries exist. The former `TIER_THRESHOLDS` point thresholds are unused.
 
