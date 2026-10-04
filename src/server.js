@@ -83,14 +83,6 @@ app.use('/assets', express.static(publicDir, { maxAge: production ? '1d' : 0, in
 app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
 const cookieOptions = { httpOnly: true, secure: production, sameSite: 'lax', signed: true, path: '/', maxAge: 60 * 60 * 1000 };
 const csrf = value => createHmac('sha256', secret).update(value).digest('hex');
-function isSameOriginRequest(req) {
-  try {
-    const requestOrigin = new URL(`${production ? 'https' : req.protocol}://${req.get('host')}`);
-    const suppliedOrigin = new URL(req.get('origin'));
-    return suppliedOrigin.origin === requestOrigin.origin
-      && (!production || suppliedOrigin.protocol === 'https:');
-  } catch { return false; }
-}
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   const session = req.signedCookies.store_session || randomBytes(24).toString('hex');
@@ -99,7 +91,10 @@ app.use((req, res, next) => {
   res.locals = { path: req.path, csrf: csrf(session), minecraft: process.env.MINECRAFT_ADDRESS || 'play.strafemc.net', discord: httpsUrl(process.env.DISCORD_URL), heroImage: httpsUrl(process.env.HERO_IMAGE_URL), customerName: req.signedCookies.minecraft_name || '', pageTitle: 'StrafeMC', categories: [], regionNames, money };
   if (req.method === 'POST') {
     const given = Buffer.from(String(req.body._csrf || '')); const expected = Buffer.from(csrf(session));
-    if (!isSameOriginRequest(req) || given.length !== expected.length || !timingSafeEqual(given, expected)) return res.status(403).render('message', { title: 'Request expired', message: 'Refresh the page and try again.', status: 'error' });
+    if (given.length !== expected.length || !timingSafeEqual(given, expected)) {
+      console.warn(JSON.stringify({ event: 'csrf_rejected', reason: req.signedCookies.store_session ? 'invalid_token' : 'missing_session', method: req.method, route: req.path, host: req.get('host') }));
+      return res.status(403).render('message', { title: 'Request expired', message: 'Refresh the page and try again.', status: 'error' });
+    }
   }
   next();
 });
