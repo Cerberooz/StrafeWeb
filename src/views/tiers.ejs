@@ -27,8 +27,8 @@
         <%- include('partials/tier-information') %>
       </div>
       <nav class="connected-tabs" aria-label="SMP leaderboard">
-        <a href="/tiers?mode=smp-teams<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-teams' ? 'selected' : '' %>" <%- mode === 'smp-teams' ? 'aria-current="page"' : '' %>><img src="/assets/design/team-banner.svg" alt=""><span>Team</span></a>
-        <a href="/tiers?mode=smp-solo<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-solo' ? 'selected' : '' %>" <%- mode === 'smp-solo' ? 'aria-current="page"' : '' %>><img src="/assets/design/solo-banner.svg" alt=""><span>Solo</span></a>
+        <a href="/tiers?mode=smp-teams<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-teams' ? 'selected' : '' %>" <%- mode === 'smp-teams' ? 'aria-current="page"' : '' %>><img src="/assets/design/Teams_Icon.png" alt=""><span>Team</span></a>
+        <a href="/tiers?mode=smp-solo<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-solo' ? 'selected' : '' %>" <%- mode === 'smp-solo' ? 'aria-current="page"' : '' %>><img src="/assets/design/Solo_Icon.png" alt=""><span>Solo</span></a>
       </nav>
       <% if (!board.entries.length) { %>
         <div class="tier-empty"><h2><%= board.unavailable ? 'Rankings temporarily unavailable.' : 'Rankings coming soon.' %></h2><p><%= board.unavailable ? 'Please try again in a moment.' : 'Standings will appear once points have been recorded.' %></p></div>
