@@ -39,14 +39,14 @@
 .hero-brand>span{color:#4582ff}
 .server-preview{aspect-ratio:16/10;border-radius:14px;max-width:none}
 .server-preview>img{object-fit:cover;object-position:center;image-rendering:auto}
-.home-actions .button{position:relative;isolation:isolate;transition:background .2s,border-color .2s,box-shadow .2s}
+.home-actions .button,.comparison .rank-column .add-rank{position:relative;isolation:isolate;transition:background .2s,border-color .2s,box-shadow .2s}
 .home-actions .button img{width:18px;height:18px;object-fit:contain}
 @property --action-border-progress{syntax:'<angle>';inherits:false;initial-value:0deg}
-.home-actions .button::before{content:'';position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:conic-gradient(from -90deg,#4582ff 0deg var(--action-border-progress),transparent var(--action-border-progress) 360deg);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;pointer-events:none;transition:--action-border-progress .65s ease}
-.home-actions .button:hover::before,.home-actions .button:focus-visible::before{--action-border-progress:360deg}
-.home-actions .button:hover,.home-actions .button:focus-visible{background:#1c2230;box-shadow:0 0 16px #4582ff15}
+.home-actions .button::before,.comparison .rank-column .add-rank::before{content:'';position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:conic-gradient(from -90deg,#4582ff 0deg var(--action-border-progress),transparent var(--action-border-progress) 360deg);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;pointer-events:none;transition:--action-border-progress .65s ease}
+.home-actions .button:hover::before,.home-actions .button:focus-visible::before,.comparison .rank-column .add-rank:hover::before,.comparison .rank-column .add-rank:focus-visible::before{--action-border-progress:360deg}
+.home-actions .button:hover,.home-actions .button:focus-visible,.comparison .rank-column .add-rank:hover,.comparison .rank-column .add-rank:focus-visible{background:#1c2230;box-shadow:0 0 16px #4582ff15}
 @media(max-width:650px){.hero{grid-template-columns:1fr;gap:32px;max-width:500px}}
-@media(prefers-reduced-motion:reduce){.home-actions .button,.home-actions .button::before{transition:none}}
+@media(prefers-reduced-motion:reduce){.home-actions .button,.home-actions .button::before,.comparison .rank-column .add-rank,.comparison .rank-column .add-rank::before{transition:none}}
 
 /* A single board frame keeps the active tab joined to both board states. */
 .tier-page .leaderboard-module{max-width:none}
@@ -68,3 +68,20 @@
 
 .server-online .server-status-dot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:#77808f;box-shadow:0 0 0 5px #77808f20}.server-online[data-state="online"] .server-status-dot{background:#20ae79;box-shadow:0 0 0 5px #20ae7925}.server-online[data-state="offline"] .server-status-dot{background:#e05b65;box-shadow:0 0 0 5px #e05b6525}
 .profile-identities .profile-identity{display:inline-flex;align-items:center;justify-content:center;gap:7px}.profile-identity .identity-icon{display:block;width:18px;height:18px;flex:0 0 18px;object-fit:contain}.identity-premium .identity-icon{image-rendering:pixelated}
+
+/* Rank comparison refresh: flush-left section labels and purchase actions under each price. */
+.comparison thead th.rank-column{height:210px;padding:10px 4px 12px}
+.comparison .rank-column .add-rank{display:flex;width:110px;max-width:100%;min-height:38px;height:38px;margin:10px auto 0;padding:0 8px;border-color:#2b2b33;border-radius:8px;background:#202025;color:#f6f6f9;font-size:10px;text-transform:none}
+.rank-period{display:inline-block;margin-left:4px;color:#a8a8b8;font-family:Archivo,Arial,sans-serif;font-size:10px;font-weight:500;white-space:nowrap}
+.comparison tbody .group-row th{position:relative;height:38px;padding:12px 0 8px;border-top:1px solid #42d8e833;border-bottom:0;background:transparent;color:#e5b73b;font-size:11px;font-weight:700;letter-spacing:.08em;text-align:left;text-transform:uppercase}
+.comparison tbody .group-row th::before{display:inline-block;width:6px;height:6px;margin:0 8px 1px 0;background:#42d8e8;content:'';transform:rotate(45deg)}
+.comparison tbody .group-row th::after{position:absolute;right:0;bottom:0;left:0;height:1px;background:linear-gradient(90deg,#42d8e8a6,#42d8e81f 58%,transparent);content:''}
+
+/* Keep the Discord link understated while signaling that it opens a destination. */
+.store-info .store-discord a{display:inline-flex;align-items:center;gap:5px;color:#f6f6f9;cursor:pointer;transition:color .15s ease}
+.store-info .store-discord a::after{content:"↗";font-size:10px;color:#a8a8b8;transition:color .15s ease,transform .15s ease}
+.store-info .store-discord a:hover,.store-info .store-discord a:focus-visible{color:#fff}
+.store-info .store-discord a:hover::after,.store-info .store-discord a:focus-visible::after{color:#f6f6f9;transform:translate(1px,-1px)}
+
+/* Give the tiers leaderboard a little more space from the viewport edges. */
+.tier-page .tiers-main{padding-left:clamp(16px,2vw,32px);padding-right:clamp(16px,2vw,32px)}

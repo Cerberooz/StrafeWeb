@@ -175,9 +175,8 @@ app.post('/customer', authLimit, async (req, res) => {
   } catch { res.redirect(303, `${destination}&error=auth`); }
 });
 app.post('/customer/logout', (req, res) => { res.clearCookie('paynow_customer', cookieOptions); res.clearCookie('minecraft_name', cookieOptions); res.redirect(303, '/'); });
-// Coalesce retries within a customer session. Never create multiple checkouts for a double submit.
+// Coalesce only concurrent requests. PayNow checkout URLs are single-use and short-lived.
 const checkouts = new Map();
-setInterval(() => { for (const [key, item] of checkouts) if (item.expires <= Date.now()) checkouts.delete(key); }, 60_000).unref();
 const MAX_CHECKOUTS = 10_000;
 app.post('/checkout', checkoutLimit, authLimit, async (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -214,16 +213,15 @@ app.post('/checkout', checkoutLimit, authLimit, async (req, res) => {
     const line = { product_id: id, quantity: 1, subscription, custom_variables: customVariables, ...(product.single_game_server_only ? { selected_gameserver_id: selectedServer } : {}) };
     const lineHash = createHash('sha256').update(JSON.stringify(line)).digest('hex');
     const key = `${req.storeSession}:${tokenHash}:${lineHash}`;
-    const previous = checkouts.get(key);
-    let promise = previous && previous.expires > Date.now() ? previous.promise : null;
+    let promise = checkouts.get(key) || null;
     if (!promise) {
-      if (checkouts.size >= MAX_CHECKOUTS) {
-        for (const [checkoutKey, item] of checkouts) if (item.expires <= Date.now()) checkouts.delete(checkoutKey);
-        if (checkouts.size >= MAX_CHECKOUTS) throw new Error('Checkout capacity reached');
-      }
+      if (checkouts.size >= MAX_CHECKOUTS) throw new Error('Checkout capacity reached');
       promise = jsonRequest('https://api.paynow.gg/v1/checkouts', { method: 'POST', headers: { ...paynowHeaders(req.ip, token), 'Content-Type': 'application/json' }, body: JSON.stringify({ lines: [line], auto_redirect: true, return_url: `${origin.origin}/checkout/complete`, cancel_url: `${origin.origin}${destination}` }) });
-      checkouts.set(key, { promise, expires: Date.now() + 2 * 60_000 });
-      promise.catch(() => checkouts.delete(key));
+      checkouts.set(key, promise);
+      promise.then(
+        () => { if (checkouts.get(key) === promise) checkouts.delete(key); },
+        () => { if (checkouts.get(key) === promise) checkouts.delete(key); }
+      );
     }
     const result = await promise; const url = new URL(result.url);
     if (url.protocol !== 'https:' || !(url.hostname === 'paynow.gg' || url.hostname.endsWith('.paynow.gg')) || url.username || url.password) throw new Error('Untrusted checkout redirect');

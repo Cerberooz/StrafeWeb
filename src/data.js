@@ -44,7 +44,24 @@ export async function paynowProducts(ip, token, fresh = false) {
   return fresh ? load() : cached(`paynow:${partition}`, 15_000, load);
 }
 function normalize(pkg, category) {
-  return { id: String(pkg.id), name: String(pkg.name || ''), description: String(pkg.description || ''), image: httpsUrl(pkg.image?.url || pkg.image || pkg.image_url), price: Number(pkg.total_price ?? pkg.base_price ?? 0), currency: String(pkg.currency || 'USD').toUpperCase(), category: String(category.id), markup: parseDescription(pkg.description) };
+  const monthlySubscription = pkg.allow_subscription
+    && String(pkg.subscription_interval_scale || '').toLowerCase() === 'month'
+    && Number(pkg.subscription_interval_value) === 1;
+  const oneMonthPurchase = pkg.allow_one_time_purchase
+    && pkg.remove_after_enabled
+    && String(pkg.remove_after_time_scale || '').toLowerCase() === 'month'
+    && Number(pkg.remove_after_time_value) === 1;
+  return {
+    id: String(pkg.id),
+    name: String(pkg.name || ''),
+    description: String(pkg.description || ''),
+    image: httpsUrl(pkg.image?.url || pkg.image || pkg.image_url),
+    price: Number(pkg.total_price ?? pkg.base_price ?? 0),
+    currency: String(pkg.currency || 'USD').toUpperCase(),
+    category: String(category.id),
+    monthly: Boolean(monthlySubscription || oneMonthPurchase),
+    markup: parseDescription(pkg.description)
+  };
 }
 export function rankCategory(categories) {
   return categories.find(category => category.slug.toLowerCase() === 'ranks' || /rank/i.test(category.name));
