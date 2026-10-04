@@ -67,3 +67,4 @@
 .profile-identities .profile-identity{margin-top:0}
 
 .server-online .server-status-dot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:#77808f;box-shadow:0 0 0 5px #77808f20}.server-online[data-state="online"] .server-status-dot{background:#20ae79;box-shadow:0 0 0 5px #20ae7925}.server-online[data-state="offline"] .server-status-dot{background:#e05b65;box-shadow:0 0 0 5px #e05b6525}
+.profile-identities .profile-identity{display:inline-flex;align-items:center;justify-content:center;gap:7px}.profile-identity .identity-icon{display:block;width:18px;height:18px;flex:0 0 18px;object-fit:contain}.identity-premium .identity-icon{image-rendering:pixelated}

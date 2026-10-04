@@ -15,7 +15,7 @@ let activeBatches = 0;
 
 function readPortrait(skin, playerId) {
   // Premium skins follow the verified Mojang UUID. Cracked players use only the
-  // canonical texture selected with /account skin, never an offline UUID or name.
+  // canonical texture synchronized from proxy SkinsRestorer, never an offline UUID or name.
   let identifier = playerId;
   if (!skin || (skin.premium !== true && (!['classic', 'slim'].includes(skin.model) || typeof skin.textureUrl !== 'string'))) {
     throw new Error('Invalid account appearance');
@@ -51,8 +51,13 @@ function loadBatch(ids) {
       // Validate canonical skin inputs before replacing any cached appearance.
       const values = ids.map(id => {
         const skin = result.skins[id];
-        const portraits = skin && (skin.premium === true || typeof skin.textureUrl === 'string')
-          ? readPortrait(skin, id) : { portraitUrl: null, profilePortraitUrl: null };
+        let portraits = { portraitUrl: null, profilePortraitUrl: null };
+        try {
+          if (skin && (skin.premium === true || typeof skin.textureUrl === 'string')) portraits = readPortrait(skin, id);
+        } catch {
+          const previous = cache.get(id);
+          if (previous) portraits = { portraitUrl: previous.portraitUrl, profilePortraitUrl: previous.profilePortraitUrl };
+        }
         return [id, { ...portraits, premium: skin?.premium === true, linked: skin?.linked === true }];
       });
       for (const [id, appearance] of values) remember(id, appearance);

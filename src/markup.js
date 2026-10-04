@@ -29,7 +29,15 @@ export function richHtml(value) {
   });
 }
 export function parseDescription(description) {
-  const $ = cheerio.load(String(description ?? '').slice(0, 200_000), {}, false);
+  const source = String(description ?? '').slice(0, 200_000);
+  let $ = cheerio.load(source, {}, false);
+  // PayNow can return markup entered in its editor as escaped text wrapped in
+  // paragraphs (for example, &lt;perks&gt;). Decode that representation and
+  // parse it as markup so the comparison table can read its sections.
+  if (!$('perks').length) {
+    const encodedMarkup = $.root().text();
+    if (/<\s*perks(?:\s|>)/i.test(encodedMarkup)) $ = cheerio.load(encodedMarkup, {}, false);
+  }
   const short = richHtml($('short-description').first().html());
   const sections = new Map();
   $('perks').each((_, block) => {

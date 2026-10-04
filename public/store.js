@@ -56,14 +56,23 @@ if (playerProfile) {
     const premium = button.dataset.premium === 'true';
     const linked = button.dataset.linked === 'true';
     identityNode.replaceChildren();
-    const addIdentity = (label, modifier = '') => {
+    const addIdentity = (label, modifier = '', icon = '') => {
       const pill = document.createElement('span');
       pill.className = `profile-identity ${modifier}`.trim();
-      pill.textContent = label;
+      if (icon) {
+        const image = document.createElement('img');
+        image.src = icon;
+        image.alt = '';
+        image.className = 'identity-icon';
+        image.width = 18;
+        image.height = 18;
+        pill.append(image);
+      }
+      pill.append(document.createTextNode(label));
       identityNode.append(pill);
     };
-    if (linked) addIdentity('Discord', 'identity-discord');
-    if (premium) addIdentity('Premium', 'identity-premium');
+    if (premium) addIdentity('Premium', 'identity-premium', '/assets/design/minecraft-block.png');
+    if (linked) addIdentity('Discord', 'identity-discord', '/assets/design/discord-symbol.svg');
     if (!linked && !premium) addIdentity('Discord not linked');
     playerProfile.showModal();
   }));
