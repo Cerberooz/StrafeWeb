@@ -228,8 +228,10 @@ app.post('/checkout', checkoutLimit, authLimit, async (req, res) => {
     }
     const result = await promise; const url = new URL(result.url);
     if (url.protocol !== 'https:' || !(url.hostname === 'paynow.gg' || url.hostname.endsWith('.paynow.gg')) || url.username || url.password) throw new Error('Untrusted checkout redirect');
+    console.info(JSON.stringify({ event: 'checkout_redirect', providerHost: url.hostname }));
     res.redirect(303, url.href);
   } catch (error) {
+    console.error(JSON.stringify({ event: 'checkout_failed', errorType: error.name, status: Number.isInteger(error.status) ? error.status : undefined }));
     if ([401, 403].includes(error.status)) {
       if (usedSessionAuthentication) invalidateCustomerAuthentication(req.storeSession, authenticatedUsername, req.ip, token);
       res.clearCookie('paynow_customer', cookieOptions); res.clearCookie('minecraft_name', cookieOptions);
