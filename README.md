@@ -6,6 +6,8 @@ Independent Node.js SSR application, default port **5020**. Every page is render
 
 Requires Node.js 22.9+ and pnpm.
 
+`package.json` pins pnpm to **10.18.3** for Corepack, including Docker builds. Both dependency-install stages copy `pnpm-workspace.yaml`, which explicitly permits esbuild's installation script and fails on other unapproved dependency scripts. Commit these files together; dependency installation inside Docker does not inherit approvals made on the VPS host.
+
 ```powershell
 pnpm install --frozen-lockfile
 Copy-Item .env.example .env

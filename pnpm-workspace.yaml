@@ -1,0 +1,8 @@
+packages:
+  - '.'
+
+# The SSR bundler needs its platform binary installed. Other dependency scripts
+# require an explicit review instead of running automatically.
+onlyBuiltDependencies:
+  - esbuild
+strictDepBuilds: true
