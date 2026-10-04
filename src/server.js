@@ -9,6 +9,7 @@ import { basename, dirname, resolve } from 'node:path';
 import { catalog, rankCategory, leaderboard, paynowReady, paynowProducts, jsonRequest, paynowHeaders } from './data.js';
 import { comparison, httpsUrl, rankImageHosts } from './markup.js';
 import { accountPortraits, teamRosterPortraits, portraitOrigin } from './portraits.js';
+import { serverStatus } from './server-status.js';
 
 const app = express();
 const production = process.env.NODE_ENV === 'production';
@@ -25,13 +26,12 @@ const baseDir = dirname(fileURLToPath(import.meta.url));
 const publicDir = resolve(baseDir, basename(baseDir) === 'dist' ? 'public' : '../public');
 const stylesheetVersion = createHash('sha256').update(readFileSync(resolve(publicDir, 'store.css'))).digest('hex').slice(0, 16);
 app.locals.stylesheetVersion = stylesheetVersion;
+app.locals.scriptVersion = createHash('sha256').update(readFileSync(resolve(publicDir, 'store.js'))).digest('hex').slice(0, 16);
 const money = (amount,currency) => {
   const code = /^[A-Z]{3}$/.test(String(currency).toUpperCase()) ? String(currency).toUpperCase() : 'USD';
   const value = Number.isFinite(Number(amount)) ? Number(amount) : 0;
   return code === 'SGD' ? `S$${value.toFixed(2)}` : new Intl.NumberFormat('en',{style:'currency',currency:code}).format(value);
 };
-const onlineValue = process.env.SERVER_ONLINE_COUNT;
-const onlineCount = /^\d{1,7}$/.test(onlineValue || '') ? Number(onlineValue) : null;
 const regionNames = { AS: 'Asia', EU: 'Europe', NA: 'North America', SA: 'South America', OC: 'Oceania', AF: 'Africa' };
 function tierColumns(entries) {
   const ranked = [...entries].sort((a, b) => Number(b.points || 0) - Number(a.points || 0) || String(a.displayName || '').localeCompare(String(b.displayName || '')));
@@ -88,7 +88,7 @@ app.use((req, res, next) => {
   const session = req.signedCookies.store_session || randomBytes(24).toString('hex');
   if (!req.signedCookies.store_session) res.cookie('store_session', session, cookieOptions);
   req.storeSession = session;
-  res.locals = { path: req.path, csrf: csrf(session), minecraft: process.env.MINECRAFT_ADDRESS || 'play.strafemc.net', discord: httpsUrl(process.env.DISCORD_URL), heroImage: httpsUrl(process.env.HERO_IMAGE_URL), customerName: req.signedCookies.minecraft_name || '', pageTitle: 'StrafeMC', categories: [], onlineCount, regionNames, money };
+  res.locals = { path: req.path, csrf: csrf(session), minecraft: process.env.MINECRAFT_ADDRESS || 'play.strafemc.net', discord: httpsUrl(process.env.DISCORD_URL), heroImage: httpsUrl(process.env.HERO_IMAGE_URL), customerName: req.signedCookies.minecraft_name || '', pageTitle: 'StrafeMC', categories: [], regionNames, money };
   if (req.method === 'POST') {
     const given = Buffer.from(String(req.body._csrf || '')); const expected = Buffer.from(csrf(session));
     if (req.headers.origin !== origin.origin || given.length !== expected.length || !timingSafeEqual(given, expected)) return res.status(403).render('message', { title: 'Request expired', message: 'Refresh the page and try again.', status: 'error' });
@@ -124,6 +124,7 @@ function invalidateCustomerAuthentication(session, username, ip, token) {
   if (entry) entry.promise.then(cachedToken => { if (cachedToken === token && customerAuthentications.get(key) === entry) customerAuthentications.delete(key); }).catch(() => {});
 }
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
+app.get('/server-status', async (_, res) => res.json(await serverStatus()));
 app.get('/', async (req, res) => { const store = await catalog(req.ip, req.signedCookies.paynow_customer); res.render('home', { store, categories: store.categories, ranks: rankCategory(store.categories)?.packages.slice(0, 3) || [] }); });
 async function renderRanks(req, res) {
   const store = await catalog(req.ip, req.signedCookies.paynow_customer); const category = req.params.id ? store.categories.find(c => c.id === req.params.id) : rankCategory(store.categories);

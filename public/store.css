@@ -62,3 +62,8 @@
 /* Compact navigation remains visible as the page scrolls. */
 .site-header{position:sticky;top:0;z-index:20;height:58px;border-bottom:1px solid #ffffff08}
 @media(max-width:760px){.site-header{height:52px}}
+
+.profile-identities{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px;margin-top:14px;max-width:100%}
+.profile-identities .profile-identity{margin-top:0}
+
+.server-online .server-status-dot{width:10px;height:10px;flex:0 0 10px;border-radius:50%;background:#77808f;box-shadow:0 0 0 5px #77808f20}.server-online[data-state="online"] .server-status-dot{background:#20ae79;box-shadow:0 0 0 5px #20ae7925}.server-online[data-state="offline"] .server-status-dot{background:#e05b65;box-shadow:0 0 0 5px #e05b6525}

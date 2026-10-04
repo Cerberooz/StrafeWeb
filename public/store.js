@@ -1,3 +1,26 @@
+const serverStatusNode = document.querySelector('[data-server-status]');
+if (serverStatusNode) {
+  let loadingStatus = false;
+  async function refreshServerStatus() {
+    if (loadingStatus || document.hidden) return;
+    loadingStatus = true;
+    try {
+      const response = await fetch('/server-status', { signal: AbortSignal.timeout(8000), cache: 'no-store' });
+      if (!response.ok) throw new Error('Status unavailable');
+      const status = await response.json();
+      const online = status.state === 'online' && Number.isSafeInteger(status.players) && status.players >= 0;
+      serverStatusNode.dataset.state = online ? 'online' : status.state === 'offline' ? 'offline' : 'unavailable';
+      serverStatusNode.querySelector('[data-server-status-text]').textContent = online
+        ? `${status.players.toLocaleString('en-US')} online` : status.state === 'offline' ? 'Offline' : 'Status unavailable';
+    } catch {
+      serverStatusNode.dataset.state = 'unavailable';
+      serverStatusNode.querySelector('[data-server-status-text]').textContent = 'Status unavailable';
+    } finally { loadingStatus = false; }
+  }
+  refreshServerStatus();
+  setInterval(refreshServerStatus, 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshServerStatus(); });
+}
 document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async () => {
   const feedback = button.querySelector('.copy-feedback');
   try { await navigator.clipboard.writeText(button.dataset.copy); if (feedback) feedback.textContent = 'Copied to clipboard'; }
@@ -32,9 +55,16 @@ if (playerProfile) {
     portraitNode.src = button.dataset.portrait || '/assets/design/default-player-bust.svg';
     const premium = button.dataset.premium === 'true';
     const linked = button.dataset.linked === 'true';
-    identityNode.textContent = premium ? 'Premium' : linked ? 'Discord linked' : 'Discord not linked';
-    identityNode.classList.toggle('identity-premium', premium);
-    identityNode.classList.toggle('identity-discord', !premium && linked);
+    identityNode.replaceChildren();
+    const addIdentity = (label, modifier = '') => {
+      const pill = document.createElement('span');
+      pill.className = `profile-identity ${modifier}`.trim();
+      pill.textContent = label;
+      identityNode.append(pill);
+    };
+    if (linked) addIdentity('Discord', 'identity-discord');
+    if (premium) addIdentity('Premium', 'identity-premium');
+    if (!linked && !premium) addIdentity('Discord not linked');
     playerProfile.showModal();
   }));
   playerProfile.addEventListener('click', event => {
