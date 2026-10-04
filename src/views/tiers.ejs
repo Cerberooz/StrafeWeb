@@ -26,6 +26,7 @@
       <div class="leaderboard-toolbar">
         <%- include('partials/tier-information') %>
       </div>
+      <div class="leaderboard-frame">
       <nav class="connected-tabs" aria-label="SMP leaderboard">
         <a href="/tiers?mode=smp-teams<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-teams' ? 'selected' : '' %>" <%- mode === 'smp-teams' ? 'aria-current="page"' : '' %>><img src="/assets/design/Teams_Icon.png" alt=""><span>Team</span></a>
         <a href="/tiers?mode=smp-solo<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-solo' ? 'selected' : '' %>" <%- mode === 'smp-solo' ? 'aria-current="page"' : '' %>><img src="/assets/design/Solo_Icon.png" alt=""><span>Solo</span></a>
@@ -85,6 +86,7 @@
           <% }) %>
         </div>
       <% } %>
+      </div>
       <% if (board.truncated) { %><p class="board-truncated">Showing the first 10,000 ranked entries.</p><% } %>
     </div>
   <% } %>

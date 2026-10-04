@@ -32,3 +32,33 @@
   .tier-page .connected-tabs a img{width:38px;height:38px}
   .tier-page .connected-tabs a.selected:after{width:74px;bottom:5px}
 }
+
+/* Landing preview and action border progress. */
+.hero{max-width:1180px;grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr);gap:48px}
+.hero-brand{font-weight:700;white-space:nowrap}
+.hero-brand>span{color:#4582ff}
+.server-preview{aspect-ratio:16/10;border-radius:14px;max-width:none}
+.server-preview>img{object-fit:cover;object-position:center;image-rendering:auto}
+.home-actions .button{position:relative;isolation:isolate;transition:background .2s,border-color .2s,box-shadow .2s}
+.home-actions .button img{width:18px;height:18px;object-fit:contain}
+@property --action-border-progress{syntax:'<angle>';inherits:false;initial-value:0deg}
+.home-actions .button::before{content:'';position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:conic-gradient(from -90deg,#4582ff 0deg var(--action-border-progress),transparent var(--action-border-progress) 360deg);-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude;pointer-events:none;transition:--action-border-progress .65s ease}
+.home-actions .button:hover::before,.home-actions .button:focus-visible::before{--action-border-progress:360deg}
+.home-actions .button:hover,.home-actions .button:focus-visible{background:#1c2230;box-shadow:0 0 16px #4582ff15}
+@media(max-width:650px){.hero{grid-template-columns:1fr;gap:32px;max-width:500px}}
+@media(prefers-reduced-motion:reduce){.home-actions .button,.home-actions .button::before{transition:none}}
+
+/* A single board frame keeps the active tab joined to both board states. */
+.tier-page .leaderboard-module{max-width:none}
+.tier-page .tiers-main{padding-left:clamp(12px,1.3vw,24px);padding-right:clamp(12px,1.3vw,24px)}
+.leaderboard-frame{display:flow-root;isolation:isolate}
+.leaderboard-frame .connected-tabs{margin:0 0 -1px;position:relative;z-index:1;gap:8px}
+.leaderboard-frame .connected-tabs a{flex:0 0 148px;height:92px;min-height:92px;justify-content:center}
+.leaderboard-frame .connected-tabs a img{width:50px;height:50px}
+.leaderboard-frame .connected-tabs a.selected{border-bottom:1px solid #101216;background:#101216}
+.leaderboard-frame .tier-empty,.leaderboard-frame .tier-columns{position:relative;margin:0;border-radius:0 12px 12px 12px}
+@media(max-width:650px){.leaderboard-frame .connected-tabs a{flex-basis:124px;height:82px;min-height:82px}.leaderboard-frame .connected-tabs a img{width:42px;height:42px}}
+
+/* Compact navigation remains visible as the page scrolls. */
+.site-header{position:sticky;top:0;z-index:20;height:58px;border-bottom:1px solid #ffffff08}
+@media(max-width:760px){.site-header{height:52px}}

@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import { rateLimit } from 'express-rate-limit';
 import { createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { catalog, rankCategory, leaderboard, paynowReady, paynowProducts, jsonRequest, paynowHeaders } from './data.js';
 import { comparison, httpsUrl, rankImageHosts } from './markup.js';
@@ -21,6 +22,9 @@ if (process.env.API_SERVER_BASE_URL || process.env.POINTS_API_BASE_URL) {
   if (production && url.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new Error('Use HTTPS for points API outside localhost.');
 }
 const baseDir = dirname(fileURLToPath(import.meta.url));
+const publicDir = resolve(baseDir, basename(baseDir) === 'dist' ? 'public' : '../public');
+const stylesheetVersion = createHash('sha256').update(readFileSync(resolve(publicDir, 'store.css'))).digest('hex').slice(0, 16);
+app.locals.stylesheetVersion = stylesheetVersion;
 const money = (amount,currency) => {
   const code = /^[A-Z]{3}$/.test(String(currency).toUpperCase()) ? String(currency).toUpperCase() : 'USD';
   const value = Number.isFinite(Number(amount)) ? Number(amount) : 0;
@@ -75,7 +79,7 @@ app.use((req, res, next) => {
 });
 app.use(cookieParser(secret));
 app.use(express.urlencoded({ extended: false, limit: '12kb', parameterLimit: 30 }));
-app.use('/assets', express.static(resolve(baseDir, basename(baseDir) === 'dist' ? 'public' : '../public'), { maxAge: production ? '1d' : 0, index: false }));
+app.use('/assets', express.static(publicDir, { maxAge: production ? '1d' : 0, index: false }));
 app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
 const cookieOptions = { httpOnly: true, secure: production, sameSite: 'lax', signed: true, path: '/', maxAge: 60 * 60 * 1000 };
 const csrf = value => createHmac('sha256', secret).update(value).digest('hex');
