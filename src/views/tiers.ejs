@@ -19,36 +19,85 @@
       </form>
     <% } %>
   </div>
-  <% if (mode === 'pvp' && !board.entries.length) { %>
-    <div class="pvp-empty"><img src="/assets/design/pvp-icon.svg" alt=""><h2>PVP</h2><p><%= board.unavailable ? 'Rankings temporarily unavailable.' : 'Rankings coming soon.' %></p></div>
+  <% if (mode === 'pvp') { %>
+    <div class="pvp-empty"><img src="/assets/design/pvp-icon.svg" alt=""><h2>PVP</h2><p>Rankings coming soon.</p></div>
   <% } else { %>
     <div class="leaderboard-module">
-      <% if (mode !== 'pvp') { %>
-        <nav class="connected-tabs" aria-label="SMP leaderboard">
-          <a href="/tiers?mode=smp-teams<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-teams' ? 'selected' : '' %>" <%- mode === 'smp-teams' ? 'aria-current="page"' : '' %>><img src="/assets/design/team-banner.svg" alt=""><span>Team</span></a>
-          <a href="/tiers?mode=smp-solo<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-solo' ? 'selected' : '' %>" <%- mode === 'smp-solo' ? 'aria-current="page"' : '' %>><img src="/assets/design/solo-banner.svg" alt=""><span>Solo</span></a>
-        </nav>
-      <% } %>
-      <div class="leaderboard-body">
-        <div class="leaderboard-header"><span># / <%= mode === 'smp-teams' ? 'TEAM' : 'PLAYER' %></span><span>REGION</span><span>POINTS</span></div>
-        <% if (!board.entries.length) { %>
-          <div class="leaderboard-empty"><h2><%= board.unavailable ? 'Rankings temporarily unavailable.' : 'Rankings coming soon.' %></h2><p><%= board.unavailable ? 'Please try again in a moment.' : 'Standings will appear once points have been recorded.' %></p></div>
-        <% } else { %>
-          <div class="leaderboard-rows">
-            <% board.entries.forEach((entry,index) => { const rank = Number(entry.rank || (page-1)*6+index+1); const name = String(entry.displayName || entry.subjectId || ''); const points = Number(entry.points || 0); const region = String(entry.region || leaderboardRegion || ''); %>
-              <div class="leaderboard-row"><span class="position position-<%= rank <= 3 ? rank : 'other' %>">#<%= rank %></span><span class="avatar <%= mode === 'smp-teams' ? 'team-avatar' : 'solo-avatar' %>" aria-hidden="true"><% if (mode === 'smp-solo') { %><img src="<%= entry.portraitUrl || '/assets/design/default-player.svg' %>" width="36" height="54" alt="" loading="<%= index < 2 ? 'eager' : 'lazy' %>" decoding="async" referrerpolicy="no-referrer" data-account-portrait><% } else { %><%= name.slice(0,1).toUpperCase() %><% } %></span><div class="competitor"><strong><%= name %></strong><small><%= entry.tier || tierForPoints(points) %> • <%= points %> points<% if (mode === 'smp-teams' && entry.memberCount !== null && entry.memberCount !== undefined) { %> • <%= entry.memberCount %> members<% } else if (mode === 'smp-solo') { %> • SMP Solo<% } %><% if (entry.prefix) { %> • <%= entry.prefix %><% } %></small></div><span class="region-cell"><% if (region) { %><span class="region-badge"><%= region %></span><% } else { %>—<% } %></span><strong class="points mono"><%= points %></strong></div>
-            <% }) %>
-          </div>
-        <% } %>
+      <div class="leaderboard-toolbar">
+        <%- include('partials/tier-information') %>
       </div>
-      <% if (page > 1 || board.hasNext) { %>
-        <nav class="pagination" aria-label="Leaderboard pagination">
-          <% if (page > 1) { %><a href="/tiers?mode=<%= mode %>&page=<%= page-1 %><%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>">← Previous</a><% } %>
-          <span>Page <%= page %></span>
-          <% if (board.hasNext) { %><a href="/tiers?mode=<%= mode %>&page=<%= page+1 %><%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>">Next →</a><% } %>
-        </nav>
+      <nav class="connected-tabs" aria-label="SMP leaderboard">
+        <a href="/tiers?mode=smp-teams<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-teams' ? 'selected' : '' %>" <%- mode === 'smp-teams' ? 'aria-current="page"' : '' %>><img src="/assets/design/team-banner.svg" alt=""><span>Team</span></a>
+        <a href="/tiers?mode=smp-solo<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-solo' ? 'selected' : '' %>" <%- mode === 'smp-solo' ? 'aria-current="page"' : '' %>><img src="/assets/design/solo-banner.svg" alt=""><span>Solo</span></a>
+      </nav>
+      <% if (!board.entries.length) { %>
+        <div class="tier-empty"><h2><%= board.unavailable ? 'Rankings temporarily unavailable.' : 'Rankings coming soon.' %></h2><p><%= board.unavailable ? 'Please try again in a moment.' : 'Standings will appear once points have been recorded.' %></p></div>
+      <% } else { %>
+        <div class="tier-columns" aria-label="Players grouped by season percentile">
+          <% columns.forEach(column => { %>
+            <section class="tier-column tier-<%= column.id.toLowerCase() %>">
+              <header class="tier-column-heading">
+                <h2><%= column.name %></h2>
+                <span><%= column.id === 'F' ? 'Remaining players' : `Top ${column.top * 100}%` %></span>
+              </header>
+              <% if (!column.entries.length) { %>
+                <p class="tier-empty-column">No players yet</p>
+              <% } else { %>
+                <div class="tier-entry-list">
+                  <% column.entries.forEach((entry, index) => {
+                    const name = String(entry.displayName || entry.subjectId || 'Unknown');
+                    const points = Number(entry.points || 0);
+                    const regionCode = String(entry.region || '').toUpperCase();
+                    const region = regionNames[regionCode] || regionCode;
+                    const rank = Number(entry.rank || index + 1);
+                  %>
+                    <% if (mode === 'smp-solo') { %>
+                      <button type="button" class="tier-entry solo-entry" data-player-profile data-player-id="<%= entry.subjectId || '' %>" data-name="<%= name %>" data-points="<%= points %>" data-region="<%= region %>" data-premium="<%= entry.premium ? 'true' : 'false' %>" data-linked="<%= entry.linked ? 'true' : 'false' %>" data-portrait="<%= entry.profilePortraitUrl || '/assets/design/default-player-bust.svg' %>" aria-label="View <%= name %>'s profile">
+                        <span class="entry-avatar"><img src="<%= entry.portraitUrl || '/assets/design/default-player-bust.svg' %>" width="32" height="32" alt="" loading="<%= index < 8 ? 'eager' : 'lazy' %>" decoding="async" referrerpolicy="no-referrer" data-account-portrait></span>
+                        <span class="entry-name"><%= name %></span><strong class="entry-points mono"><%= points.toLocaleString('en') %></strong>
+                      </button>
+                    <% } else { %>
+                      <details class="team-entry">
+                        <summary class="tier-entry team-summary"><span class="entry-name"><%= name %></span><strong class="entry-points mono"><%= points.toLocaleString('en') %></strong><span class="expand-mark" aria-hidden="true"></span></summary>
+                        <div class="team-roster">
+                          <% if (Array.isArray(entry.members) && entry.members.length) { %>
+                            <ul>
+                              <% entry.members.forEach(member => { %>
+                                <li>
+                                  <button type="button" class="tier-entry roster-entry" data-player-profile data-player-id="<%= member.playerId || '' %>" data-name="<%= member.playerName || member.name || 'Unknown player' %>" data-region="<%= region %>" data-premium="<%= member.premium ? 'true' : 'false' %>" data-linked="<%= member.linked ? 'true' : 'false' %>" data-portrait="<%= member.profilePortraitUrl || '/assets/design/default-player-bust.svg' %>" aria-label="View <%= member.playerName || member.name || 'Unknown player' %>'s profile">
+                                    <span class="entry-avatar"><img src="<%= member.portraitUrl || '/assets/design/default-player-bust.svg' %>" width="32" height="32" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-account-portrait></span>
+                                    <span class="entry-name"><%= member.playerName || member.name || 'Unknown player' %></span>
+                                    <span class="entry-role"><%= String(member.role || 'MEMBER').toLowerCase() %></span>
+                                  </button>
+                                </li>
+                              <% }) %>
+                            </ul>
+                          <% } else { %>
+                            <p>Team roster is not available yet.</p>
+                          <% } %>
+                        </div>
+                      </details>
+                    <% } %>
+                  <% }) %>
+                </div>
+              <% } %>
+            </section>
+          <% }) %>
+        </div>
       <% } %>
+      <% if (board.truncated) { %><p class="board-truncated">Showing the first 10,000 ranked entries.</p><% } %>
     </div>
   <% } %>
 </section>
+<dialog class="player-profile" aria-labelledby="profile-name">
+  <form method="dialog"><button type="submit" class="profile-close" aria-label="Close profile">×</button></form>
+  <div class="profile-content">
+    <div class="profile-avatar"><img data-profile-portrait src="/assets/design/default-player-bust.svg" width="116" height="116" referrerpolicy="no-referrer" decoding="async" alt=""></div>
+    <h2 id="profile-name" data-profile-name>Player</h2>
+    <div class="profile-region" data-profile-region>Asia</div>
+    <div class="profile-identity" data-profile-identity>Loading account…</div>
+    <section class="profile-section"><h3>OVERALL</h3><div class="profile-placeholder">Coming Soon</div></section>
+    <section class="profile-section"><h3>TIERS</h3><div class="profile-placeholder">Coming Soon</div></section>
+  </div>
+</dialog>
 <%- include('partials/footer') %>

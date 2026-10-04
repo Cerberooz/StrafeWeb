@@ -46,48 +46,35 @@ export async function paynowProducts(ip, token, fresh = false) {
 function normalize(pkg, category) {
   return { id: String(pkg.id), name: String(pkg.name || ''), description: String(pkg.description || ''), image: httpsUrl(pkg.image?.url || pkg.image || pkg.image_url), price: Number(pkg.total_price ?? pkg.base_price ?? 0), currency: String(pkg.currency || 'USD').toUpperCase(), category: String(category.id), markup: parseDescription(pkg.description) };
 }
-async function comparisonCatalog() {
-  if (!process.env.TEBEX_PUBLIC_TOKEN) return { categories: [], ready: false, unavailable: false };
-  try {
-    const categories = await cached('tebex', 60_000, async () => {
-      const result = await jsonRequest(`https://headless.tebex.io/api/accounts/${encodeURIComponent(process.env.TEBEX_PUBLIC_TOKEN)}/categories?includePackages=1`);
-      const flatten = items => items.flatMap(category => [{ id: String(category.id), name: String(category.name), slug: String(category.slug || ''), packages: (category.packages || []).map(p => normalize(p, category)) }, ...flatten(category.subcategories || [])]);
-      return flatten(result.data || []);
-    });
-    return { categories, ready: true, unavailable: false };
-  } catch { return { categories: [], ready: true, unavailable: true }; }
-}
 export function rankCategory(categories) {
-  return process.env.RANK_CATEGORY_ID ? categories.find(category => category.id === process.env.RANK_CATEGORY_ID) : categories.find(category => category.slug.toLowerCase() === 'ranks' || /rank/i.test(category.name));
+  return categories.find(category => category.slug.toLowerCase() === 'ranks' || /rank/i.test(category.name));
 }
 export async function catalog(ip, token) {
-  const [tebexResult, productsResult] = await Promise.allSettled([comparisonCatalog(), paynowProducts(ip, token)]);
-  const tebex = tebexResult.status === 'fulfilled' ? tebexResult.value : { categories: [], unavailable: true };
-  const comparisonCategory = rankCategory(tebex.categories);
-  const comparisonPackages = comparisonCategory?.packages || [];
-  const rankId = comparisonCategory?.id || process.env.RANK_CATEGORY_ID || 'ranks';
-  if (!paynowReady()) return { categories: [], ready: false, unavailable: false, comparisonPackages, comparisonUnavailable: tebex.unavailable, rankId };
+  const rankId = process.env.PAYNOW_RANK_TAG || 'ranks';
+  if (!paynowReady()) return { categories: [], ready: false, unavailable: false, comparisonPackages: [], comparisonUnavailable: false, rankId };
   try {
-    if (productsResult.status === 'rejected') throw productsResult.reason;
-    const products = [...productsResult.value].sort((a,b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+    const products = [...await paynowProducts(ip, token)].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
     const categories = new Map();
-    const mappedRanks = new Set(comparisonPackages.map(p => productId(p.id)).filter(Boolean));
+    const comparisonPackages = [];
+    const rankTag = rankId.toLowerCase();
     for (const product of products) {
-      const tags = (product.tags || []).filter(t => t.slug);
-      const isRank = mappedRanks.has(String(product.id)) || tags.some(t => t.slug === (process.env.PAYNOW_RANK_TAG || 'ranks'));
-      const groups = isRank ? [{ id: rankId, slug: 'ranks', name: 'Ranks' }] : tags.length ? tags.map(t => ({ id: String(t.id), slug: t.slug, name: t.name })) : [{ id: 'store', slug: 'store', name: 'Store' }];
+      const tags = (product.tags || []).filter(tag => typeof tag.slug === 'string' && tag.slug);
+      const isRank = tags.some(tag => tag.slug.toLowerCase() === rankTag);
+      const groups = isRank ? [{ id: rankId, slug: 'ranks', name: 'Ranks' }]
+        : tags.length ? tags.map(tag => ({ id: String(tag.id), slug: tag.slug, name: tag.name }))
+          : [{ id: 'store', slug: 'store', name: 'Store' }];
       for (const group of groups) {
         if (!categories.has(group.id)) categories.set(group.id, { ...group, packages: [] });
         const pkg = normalize({ ...product, total_price: Number(product.pricing?.price_final ?? product.price) / 100 }, group);
         pkg.paynowId = String(product.id);
         categories.get(group.id).packages.push(pkg);
+        if (isRank) comparisonPackages.push({ ...pkg, checkoutId: pkg.id });
       }
     }
-    return { categories: [...categories.values()], ready: true, unavailable: false, comparisonPackages, comparisonUnavailable: tebex.unavailable, rankId };
-  } catch { return { categories: [], ready: true, unavailable: true, comparisonPackages, comparisonUnavailable: tebex.unavailable, rankId }; }
-}
-export function productId(packageId) {
-  try { const mapping = JSON.parse(process.env.PAYNOW_PRODUCT_MAP || '{}'); return typeof mapping[packageId] === 'string' && /^\d+$/.test(mapping[packageId]) ? mapping[packageId] : ''; } catch { return ''; }
+    return { categories: [...categories.values()], ready: true, unavailable: false, comparisonPackages, comparisonUnavailable: false, rankId };
+  } catch {
+    return { categories: [], ready: true, unavailable: true, comparisonPackages: [], comparisonUnavailable: true, rankId };
+  }
 }
 export async function leaderboard(mode, page, requestedSeason = null) {
   const apiBaseUrl = process.env.API_SERVER_BASE_URL || process.env.POINTS_API_BASE_URL;
@@ -118,26 +105,32 @@ export async function leaderboard(mode, page, requestedSeason = null) {
       || null;
     if (!selected) return { entries: [], unavailable: false, ready: true, total: 0, hasNext: false, seasons, season: null, currentSeason };
 
-    // Player boards need an authoritative moderation check for every render.
-    // A zero TTL still coalesces concurrent requests without serving pre-ban rows.
-    const loadPage = pageNumber => cached(`leaderboard:${mode}:${selected.id}:${pageNumber}`, mode === 'smp-solo' ? 0 : 15_000, async () => {
+    // Tiers are population based, so load the full season board before assigning
+    // bands. Solo results use no stale cache so moderation changes take effect at once.
+    const pageSize = 100;
+    const loadPage = offset => cached(`leaderboard:${mode}:${selected.id}:${offset}`, mode === 'smp-solo' ? 0 : 15_000, async () => {
       const url = new URL(`/v1/leaderboards/${mode}`, apiBaseUrl);
-      url.searchParams.set('limit', '6'); url.searchParams.set('offset', String((pageNumber - 1) * 6));
+      url.searchParams.set('limit', String(pageSize)); url.searchParams.set('offset', String(offset));
       url.searchParams.set('season', selected.id);
       const result = await jsonRequest(url, { headers });
       const entries = result.items || result.entries || result.data || [];
       const rows = Array.isArray(entries) ? entries : [];
       const totalKnown = Number.isSafeInteger(result.total) && result.total >= 0;
       const total = totalKnown ? result.total : rows.length;
-      return { entries: rows, total, totalKnown, hasNext: result.nextOffset !== undefined ? result.nextOffset !== null : total > pageNumber * 6, ready: true, unavailable: false, updatedAt: result.updatedAt, seasons, season: result.season || selected.id, seasonName: result.seasonName || selected.name, currentSeason: result.currentSeason || currentSeason };
+      return { entries: rows, total, totalKnown, hasNext: result.nextOffset !== undefined ? result.nextOffset !== null : total > offset + rows.length, ready: true, unavailable: false, updatedAt: result.updatedAt, seasons, season: result.season || selected.id, seasonName: result.seasonName || selected.name, currentSeason: result.currentSeason || currentSeason };
     });
-    if (page === 1) return await loadPage(1);
-    const firstPage = await loadPage(1);
-    if (firstPage.totalKnown) {
-      const lastPage = Math.max(1, Math.min(1667, Math.ceil(firstPage.total / 6)));
-      if (page > lastPage) return { ...firstPage, entries: [], hasNext: false, redirectPage: lastPage };
+    const first = await loadPage(0);
+    if (first.unavailable) return first;
+    const total = Math.min(first.total, 10_000);
+    const offsets = [];
+    for (let offset = pageSize; offset < total; offset += pageSize) offsets.push(offset);
+    const pages = [first];
+    // Bound fan-out to keep the API and Supabase workload predictable.
+    for (let index = 0; index < offsets.length; index += 5) {
+      pages.push(...await Promise.all(offsets.slice(index, index + 5).map(loadPage)));
     }
-    return await loadPage(page);
+    const entries = pages.flatMap(result => result.entries).slice(0, total);
+    // Metadata has its own TTL; a cached board page must not prolong old kit URLs.
+    return { ...first, seasons, entries, total: first.total, hasNext: false, truncated: first.total > total };
   } catch { return { entries: [], unavailable: true, ready: true, total: 0, hasNext: false, seasons: [], season: null }; }
 }
-

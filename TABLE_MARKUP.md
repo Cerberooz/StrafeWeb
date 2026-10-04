@@ -1,18 +1,18 @@
-# Tebex rank comparison markup
+# PayNow rank comparison markup
 
-This document is the contract for people and AI agents editing rank package descriptions in Tebex. The store turns the structured parts of a rank description into its card copy and comparison table. Tebex is still the source of truth; do **not** create a second rank catalog in Supabase.
+This document is the contract for people and AI agents editing rank product descriptions in PayNow. The store turns the structured parts of a rank description into its card copy and comparison table. PayNow is the source of truth for rank products; do **not** create a duplicate rank catalog in Supabase.
 
-The `/ranks` comparison body contains only sections and perk rows authored inside `<perks>`. It does not inject fixed rows for rank level, price, delivery, setup, or links. Rank names and prices in the column headers come directly from Tebex package data.
+The `/ranks` comparison body contains only sections and perk rows authored inside `<perks>`. It does not inject fixed rows for rank level, price, delivery, setup, or links. Rank names and prices in the column headers come directly from PayNow product data.
 
 ## Where it renders
 
-The rank category page (`/categories/<rank-category-id>`) is selected by `RANK_CATEGORY_ID`. If that variable is not set, the store temporarily falls back to a category slug of `ranks` or a name containing `rank`.
+The rank category page (`/categories/<rank-category-id>`) is selected by the PayNow product tag configured in `PAYNOW_RANK_TAG` (default `ranks`).
 
-Each rank package needs its own description. The package ID is the comparison-column identity, and Tebex package ordering determines the column order.
+Each rank package needs its own description. The package ID is the comparison-column identity, and PayNow product sort order determines the column order.
 
 ## Required syntax
 
-Use literal tags: `<short-description>`, `<perks>`, and `<value>`. Do **not** use `<*perks*>` or `<*value*>`; those are invalid HTML and must not be saved in Tebex.
+Use literal tags: `<short-description>`, `<perks>`, and `<value>`. Do **not** use `<*perks*>` or `<*value*>`; those are invalid HTML and must not be saved in PayNow.
 
 ```html
 <short-description>
@@ -67,15 +67,15 @@ Put rich content within `<value>`. Allowed tags are `p`, `ul`, `ol`, `li`, `br`,
 
 <li data-perk="Prefix image">
   <value>
-    <img src="https://dunb17ur4ymx4.cloudfront.net/wysiwyg/example.png"
+    <img src="https://images.example.com/wysiwyg/example.png"
          width="118" height="39" alt="VIP prefix">
   </value>
 </li>
 ```
 
-The renderer permits images only from exact HTTPS hostnames in the deployment's `RANK_IMAGE_HOSTS` allowlist. The default is `dunb17ur4ymx4.cloudfront.net`, so the example above continues to work. Administrators can add approved hostnames as a comma-separated list, for example `dunb17ur4ymx4.cloudfront.net,images.example.com`. Only list hosts your administrators trust: approved image hosts still receive visitors' IP addresses when their images load. An empty list disables description images.
+The renderer permits images only from exact HTTPS hostnames in the deployment's `RANK_IMAGE_HOSTS` allowlist. No image hosts are trusted by default. Add approved hosts as a comma-separated list, for example `images.example.com,cdn.example.net`. Only list hosts your administrators trust: approved image hosts still receive visitors' IP addresses when their images load. An empty list disables description images.
 
-Credentials, explicit ports (including `:443`), non-HTTPS URLs and unlisted hosts are rejected. A hostname entry allows only that exact hostname; it does not allow its subdomains. Configuration entries must be DNS hostnames without schemes, paths, ports or wildcards. These restrictions apply to short copy, perk values and long-description HTML. Top-level product artwork provided by the trusted PayNow/Tebex catalog APIs is handled separately.
+Credentials, explicit ports (including `:443`), non-HTTPS URLs and unlisted hosts are rejected. A hostname entry allows only that exact hostname; it does not allow its subdomains. Configuration entries must be DNS hostnames without schemes, paths, ports or wildcards. These restrictions apply to short copy, perk values and long-description HTML. Top-level product artwork provided by the trusted PayNow catalog API is handled separately.
 
 Numeric `width` and `height`, plus text `alt`, are permitted. The renderer removes inline styles, event handlers, scripts, iframes, forms, SVG, and all other attributes/tags. Images are constrained to `max-width: min(150px, 100%)`, `max-height: 56px`, and `object-fit: contain`.
 
@@ -100,7 +100,7 @@ Save the following equivalent structure in each rank package, changing values on
     <ul>
       <li data-perk="Chat Prefix"><value><code>[VIP]</code></value></li>
       <li data-perk="Prefix image">
-        <value><img src="https://dunb17ur4ymx4.cloudfront.net/wysiwyg/example.png" width="118" height="39" alt="VIP prefix"></value>
+        <value><img src="https://images.example.com/wysiwyg/example.png" width="118" height="39" alt="VIP prefix"></value>
       </li>
       <li data-perk="Particle Trails" data-enabled="true"></li>
     </ul>
@@ -119,4 +119,5 @@ For the matching MVP package, preserve the section and `data-perk` names but cha
 - Do not repeat a perk within the same section/rank; correct the description instead.
 - `section[data-title]` is preferred. When missing, the first section `<h3>` is used; otherwise the title is `Perks`.
 - Keep section ordering consistent across packages; the first package that defines a section/row sets its display order.
-- Test the affected rank page after editing Tebex content. Invalid/malicious markup is sanitized rather than rendered.
+- Test the affected rank page after editing PayNow content. Invalid/malicious markup is sanitized rather than rendered.
+

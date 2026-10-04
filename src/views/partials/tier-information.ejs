@@ -1,0 +1,31 @@
+<div class="tier-information" data-tier-information>
+  <button type="button" class="information-trigger" aria-expanded="false" aria-controls="tier-information-panel" data-information-trigger>
+    <span class="information-icon" aria-hidden="true">i</span> Information
+  </button>
+  <section id="tier-information-panel" class="information-panel" aria-label="Leaderboard information" hidden>
+    <div class="information-tabs" role="tablist" aria-label="Information category">
+      <button type="button" id="information-points-tab" role="tab" aria-selected="true" aria-controls="information-points" tabindex="0">Points</button>
+      <button type="button" id="information-kit-tab" role="tab" aria-selected="false" aria-controls="information-kit" tabindex="-1">Kit</button>
+    </div>
+    <div id="information-points" role="tabpanel" aria-labelledby="information-points-tab" tabindex="0">
+      <h2>How tiers are calculated</h2>
+      <p class="information-intro">Higher points place you higher on the board. Tiers are based on your position in this season’s <%= mode === 'smp-teams' ? 'team' : 'solo' %> population.</p>
+      <div class="information-tier-list">
+        <% columns.forEach(column => { %>
+          <div class="information-tier information-tier-<%= column.id.toLowerCase() %>">
+            <h3><%= column.name %></h3>
+            <span class="percentile-chip"><span class="chip-chevron" aria-hidden="true"></span> <%= column.id === 'F' ? 'Remaining population' : `Top ${column.top * 100}%` %></span>
+          </div>
+        <% }) %>
+      </div>
+      <p class="information-note">These are cumulative cutoffs. Places round up, with at least one entry in each tier when there are five or more entries. Team and Solo are calculated separately.</p>
+    </div>
+    <div id="information-kit" role="tabpanel" aria-labelledby="information-kit-tab" tabindex="0" hidden>
+      <h2>Recommended Kit for <%= board.seasonName || 'this season' %></h2>
+      <% if (kitImageUrl) { %>
+        <img class="season-kit-image" src="<%= kitImageUrl %>" alt="Recommended kit for <%= board.seasonName || 'this season' %>" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-season-kit>
+      <% } %>
+      <p class="kit-unavailable" data-kit-unavailable <%- kitImageUrl ? 'hidden' : '' %>>Kit recommendation is not available for this season yet.</p>
+    </div>
+  </section>
+</div>

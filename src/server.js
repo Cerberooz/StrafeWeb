@@ -5,9 +5,9 @@ import { rateLimit } from 'express-rate-limit';
 import { createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { basename, dirname, resolve } from 'node:path';
-import { catalog, rankCategory, productId, leaderboard, paynowReady, paynowProducts, jsonRequest, paynowHeaders } from './data.js';
+import { catalog, rankCategory, leaderboard, paynowReady, paynowProducts, jsonRequest, paynowHeaders } from './data.js';
 import { comparison, httpsUrl, rankImageHosts } from './markup.js';
-import { accountPortraits, portraitOrigin } from './portraits.js';
+import { accountPortraits, teamRosterPortraits, portraitOrigin } from './portraits.js';
 
 const app = express();
 const production = process.env.NODE_ENV === 'production';
@@ -21,10 +21,6 @@ if (process.env.API_SERVER_BASE_URL || process.env.POINTS_API_BASE_URL) {
   if (production && url.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)) throw new Error('Use HTTPS for points API outside localhost.');
 }
 const baseDir = dirname(fileURLToPath(import.meta.url));
-const tierThresholds = JSON.parse(process.env.TIER_THRESHOLDS || '[{"min":2600,"label":"Tier 1"},{"min":2250,"label":"Tier 2"},{"min":0,"label":"Tier 3"}]');
-if (!Array.isArray(tierThresholds) || !tierThresholds.length || tierThresholds.length > 20 || tierThresholds.some(t => !Number.isFinite(t.min) || typeof t.label !== 'string' || !t.label || t.label.length > 80)) throw new Error('TIER_THRESHOLDS must be a JSON array of numeric min and text label entries.');
-tierThresholds.sort((a,b) => b.min-a.min);
-const tierForPoints = points => tierThresholds.find(t => points >= t.min)?.label || tierThresholds[tierThresholds.length-1].label;
 const money = (amount,currency) => {
   const code = /^[A-Z]{3}$/.test(String(currency).toUpperCase()) ? String(currency).toUpperCase() : 'USD';
   const value = Number.isFinite(Number(amount)) ? Number(amount) : 0;
@@ -32,6 +28,24 @@ const money = (amount,currency) => {
 };
 const onlineValue = process.env.SERVER_ONLINE_COUNT;
 const onlineCount = /^\d{1,7}$/.test(onlineValue || '') ? Number(onlineValue) : null;
+const regionNames = { AS: 'Asia', EU: 'Europe', NA: 'North America', SA: 'South America', OC: 'Oceania', AF: 'Africa' };
+function tierColumns(entries) {
+  const ranked = [...entries].sort((a, b) => Number(b.points || 0) - Number(a.points || 0) || String(a.displayName || '').localeCompare(String(b.displayName || '')));
+  const count = ranked.length;
+  const columns = [{ id: 'S', name: 'S Tier', top: 0.001 }, { id: 'A', name: 'A Tier', top: 0.01 }, { id: 'B', name: 'B Tier', top: 0.05 }, { id: 'C', name: 'C Tier', top: 0.2 }, { id: 'F', name: 'F Tier', top: 1 }].map(tier => ({ ...tier, entries: [] }));
+  let start = 0;
+  columns.forEach((tier, index) => {
+    if (index === columns.length - 1) { tier.entries = ranked.slice(start); return; }
+    if (count <= index) return;
+    const minimumEnd = start + 1;
+    const maximumEnd = Math.max(minimumEnd, count - (columns.length - index - 1));
+    const targetEnd = Math.ceil(count * tier.top);
+    const end = Math.min(maximumEnd, Math.max(minimumEnd, targetEnd));
+    tier.entries = ranked.slice(start, end);
+    start = end;
+  });
+  return columns;
+}
 app.disable('x-powered-by');
 const trustProxyRaw = process.env.TRUST_PROXY_HOPS;
 const trustProxyHops = trustProxyRaw === undefined || trustProxyRaw.trim() === '' ? 0 : Number(trustProxyRaw);
@@ -47,11 +61,11 @@ app.use((req, res, next) => {
   res.render = function (view, options = {}, callback) {
     // Product artwork comes from the trusted provider API, separately from HTML
     // descriptions. Permit only the specific origins used by this response.
-    const images = [res.locals.heroImage, options.pkg?.image,
+    const images = [res.locals.heroImage, options.pkg?.image, options.kitImageUrl,
       ...(options.categories || []).flatMap(category => category.packages.map(pkg => pkg.image)),
       ...(options.comparisonPackages || []).map(pkg => pkg.image)];
     const sources = new Set(["'self'", ...markupImageSources]);
-    if (view === 'tiers' && options.board?.entries.some(entry => entry.portraitUrl) && portraitOrigin) sources.add(portraitOrigin);
+    if (view === 'tiers' && options.board?.entries.some(entry => entry.portraitUrl || entry.members?.some(member => member.portraitUrl)) && portraitOrigin) sources.add(portraitOrigin);
     for (const image of images) { const url = httpsUrl(image); if (url) sources.add(new URL(url).origin); }
     const policy = res.getHeader('Content-Security-Policy');
     if (typeof policy === 'string') res.setHeader('Content-Security-Policy', policy.replace(/(^|;)img-src[^;]*/, `$1img-src ${[...sources].join(' ')}`));
@@ -70,7 +84,7 @@ app.use((req, res, next) => {
   const session = req.signedCookies.store_session || randomBytes(24).toString('hex');
   if (!req.signedCookies.store_session) res.cookie('store_session', session, cookieOptions);
   req.storeSession = session;
-  res.locals = { path: req.path, csrf: csrf(session), minecraft: process.env.MINECRAFT_ADDRESS || 'play.strafemc.net', discord: httpsUrl(process.env.DISCORD_URL), heroImage: httpsUrl(process.env.HERO_IMAGE_URL), customerName: req.signedCookies.minecraft_name || '', pageTitle: 'StrafeMC', categories: [], onlineCount, leaderboardRegion: process.env.LEADERBOARD_REGION === undefined ? 'AS' : process.env.LEADERBOARD_REGION.slice(0, 12), tierForPoints, money };
+  res.locals = { path: req.path, csrf: csrf(session), minecraft: process.env.MINECRAFT_ADDRESS || 'play.strafemc.net', discord: httpsUrl(process.env.DISCORD_URL), heroImage: httpsUrl(process.env.HERO_IMAGE_URL), customerName: req.signedCookies.minecraft_name || '', pageTitle: 'StrafeMC', categories: [], onlineCount, regionNames, money };
   if (req.method === 'POST') {
     const given = Buffer.from(String(req.body._csrf || '')); const expected = Buffer.from(csrf(session));
     if (req.headers.origin !== origin.origin || given.length !== expected.length || !timingSafeEqual(given, expected)) return res.status(403).render('message', { title: 'Request expired', message: 'Refresh the page and try again.', status: 'error' });
@@ -111,7 +125,7 @@ async function renderRanks(req, res) {
   const store = await catalog(req.ip, req.signedCookies.paynow_customer); const category = req.params.id ? store.categories.find(c => c.id === req.params.id) : rankCategory(store.categories);
   if (req.params.id && !category && store.ready && !store.unavailable) return res.status(404).render('message', { title: 'Category not found', message: 'This category is no longer available.', status: 'error' });
   const packages = category?.packages || [];
-  const comparisonPackages = store.comparisonPackages.map(pkg => ({ ...pkg, checkoutId: packages.find(product => product.paynowId === productId(pkg.id))?.id || '' }));
+  const comparisonPackages = store.comparisonPackages;
   res.render('ranks', { pageTitle: category?.name || 'Ranks', store, category, categories: store.categories, packages, comparisonPackages, groups: comparison(comparisonPackages), isRanks: !req.params.id || req.params.id === store.rankId });
 }
 app.get('/ranks', renderRanks); app.get('/categories/:id', renderRanks);
@@ -123,18 +137,17 @@ app.get('/packages/:id', async (req, res) => {
 app.get('/tiers', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   const mode = ['smp-teams', 'smp-solo', 'pvp'].includes(req.query.mode) ? req.query.mode : 'smp-teams';
-  const page = Math.max(1, Math.min(1667, Math.floor(Number(req.query.page) || 1)));
   const requestedSeason = typeof req.query.season === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(req.query.season)
     ? req.query.season
     : null;
-  let board = await leaderboard(mode, page, requestedSeason);
-  if (board.redirectPage && board.redirectPage !== page) {
-    const query = new URLSearchParams({ mode, page: String(board.redirectPage) });
-    if (board.season) query.set('season', board.season);
-    return res.redirect(302, `/tiers?${query}`);
-  }
+  let board = await leaderboard(mode, 1, requestedSeason);
   if (mode === 'smp-solo' && board.entries.length) board = { ...board, entries: await accountPortraits(board.entries) };
-  res.render('tiers', { pageTitle: 'Tiers', mode, page, board });
+  if (mode === 'smp-teams' && board.entries.length) board = { ...board, entries: await teamRosterPortraits(board.entries) };
+  const columns = mode === 'pvp' ? [] : tierColumns(board.entries);
+  const season = board.seasons?.find(item => item.id === board.season);
+  const kitImageUrl = typeof season?.kitImageUrl === 'string' && season.kitImageUrl.length <= 2048
+    ? httpsUrl(season.kitImageUrl) : '';
+  res.render('tiers', { pageTitle: 'Tiers', mode, board, columns, kitImageUrl });
 });
 app.get('/checkout', async (req, res) => {
   res.set('Cache-Control', 'no-store');

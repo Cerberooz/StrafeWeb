@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 import sanitizeHtml from 'sanitize-html';
 
-export const rankImageHosts = Object.freeze([...new Set((process.env.RANK_IMAGE_HOSTS ?? 'dunb17ur4ymx4.cloudfront.net').split(',').map(host => host.trim().toLowerCase()).filter(Boolean))]);
+export const rankImageHosts = Object.freeze([...new Set((process.env.RANK_IMAGE_HOSTS ?? '').split(',').map(host => host.trim().toLowerCase()).filter(Boolean))]);
 if (rankImageHosts.length > 32 || rankImageHosts.some(host => host.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(host))) throw new Error('RANK_IMAGE_HOSTS must contain at most 32 exact DNS hostnames, without schemes, paths, ports or wildcards.');
 const approvedRankImageHosts = new Set(rankImageHosts);
 export function rankImageUrl(value) {
