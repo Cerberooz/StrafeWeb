@@ -37,14 +37,13 @@ async function configuration(t) {
   const directory = await mkdtemp(join(tmpdir(), 'strafe-paynow-discord-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   return { PAYNOW_WEBHOOK_SECRET: secret, PAYNOW_STORE_ID: '67890',
-    DISCORD_PURCHASE_WEBHOOK_URL: 'https://discord.com/api/webhooks/12345/test-only-token',
+    DISCORD_PURCHASE_BOT_TOKEN: 'test-only-bot-token', DISCORD_PURCHASE_CHANNEL_ID: '345678901234567890',
     PAYNOW_WEBHOOK_DATA_DIR: directory };
 }
 const options = env => ({ env, now: () => clock, logger: { error() {} } });
 
-test('bot announcements inherit identity, retain mentions and edit their original channel after restart', async t => {
+test('bot announcements inherit identity, suppress mentions and edit their original channel after restart', async t => {
   const env = await configuration(t);
-  delete env.DISCORD_PURCHASE_WEBHOOK_URL;
   env.DISCORD_PURCHASE_BOT_TOKEN = 'test-only-bot-token';
   env.DISCORD_PURCHASE_CHANNEL_ID = '345678901234567890';
   const calls = [];
@@ -65,35 +64,34 @@ test('bot announcements inherit identity, retain mentions and edit their origina
   assert.equal(calls.length, 2);
   assert.equal(calls[1].method, 'PATCH');
   assert.equal(calls[1].url, `${calls[0].url}/234567890123456789`);
-  assert.equal(calls[1].message.content, `<@${linkedUserId}>`);
+  assert.equal(calls[1].message.content, '');
 });
 
-test('switching to bot mode preserves old webhook edits and uses the bot for new orders', async t => {
+test('legacy delivery records prevent duplicate posts and late links do not edit retired messages', async t => {
   const env = await configuration(t);
-  env.DISCORD_PURCHASE_PLAYER_AVATAR = 'false';
   const calls = [];
   const fetchImpl = async (url, init) => { calls.push({ url, ...init }); return responseMessage(); };
   assert.equal((await invoke(createPaynowDiscordHandler({ ...options(env), fetchImpl }), request(event()))).code, 204);
-  // Deployed receipts from before bot support have no transport field.
+  // Legacy receipts have no saved bot channel.
   const filename = (await readdir(env.PAYNOW_WEBHOOK_DATA_DIR)).find(name => name.endsWith('.sent'));
   const path = join(env.PAYNOW_WEBHOOK_DATA_DIR, filename);
   const receipt = JSON.parse(await readFile(path, 'utf8'));
-  delete receipt.transport;
+  delete receipt.channelId;
   await writeFile(path, JSON.stringify(receipt));
   env.DISCORD_PURCHASE_BOT_TOKEN = 'test-only-bot-token';
   env.DISCORD_PURCHASE_CHANNEL_ID = '345678901234567890';
   const handler = createPaynowDiscordHandler({ ...options(env), fetchImpl });
   assert.equal((await invoke(handler, request(linkEvent()))).code, 204);
-  assert.match(calls[1].url, /\/webhooks\/12345\/test-only-token\/messages\//);
-  assert.equal(calls[1].headers.Authorization, undefined);
+  assert.equal(calls.length, 1);
   const next = event(); next.body.id = '54322';
   assert.equal((await invoke(handler, request(next))).code, 204);
-  assert.match(calls[2].url, /\/channels\/345678901234567890\/messages$/);
+  assert.match(calls[1].url, /\/channels\/345678901234567890\/messages$/);
 });
 
-test('partial bot settings fail startup instead of silently using a webhook', async t => {
+test('partial bot settings fail startup', async t => {
   const env = await configuration(t);
   env.DISCORD_PURCHASE_BOT_TOKEN = 'test-only-bot-token';
+  delete env.DISCORD_PURCHASE_CHANNEL_ID;
   assert.throws(() => createPaynowDiscordHandler(options(env)), /CHANNEL_ID together/);
   env.DISCORD_PURCHASE_CHANNEL_ID = '../invalid';
   assert.throws(() => createPaynowDiscordHandler(options(env)), /CHANNEL_ID together/);
@@ -171,7 +169,7 @@ test('posts branded product summary, coalesces concurrent retries and retains de
   release();
   assert.deepEqual((await Promise.all([first, second])).map(result => result.code), [204, 204]);
   assert.equal(calls, 1);
-  assert.equal(message.username, 'store.strafemc.net');
+  assert.equal(message.username, undefined);
   assert.deepEqual(message.allowed_mentions, { parse: [] });
   assert.match(message.embeds[0].description, /Cerberooz/);
   assert.match(message.embeds[0].description, /Legend Rank, Keys/);
@@ -208,22 +206,22 @@ test('product/player names cannot inject markdown or ping users', async t => {
   assert.match(message.embeds[0].description, /\\\*\\\*name\\\*\\\*/);
 });
 
-test('configuration is optional but rejects partial setup and non-Discord destinations', async () => {
+test('configuration is optional but requires valid bot settings when enabled', async () => {
   assert.equal((await invoke(createPaynowDiscordHandler({ env: {} }), request(event()))).code, 503);
   assert.throws(() => createPaynowDiscordHandler({ env: { PAYNOW_WEBHOOK_SECRET: secret } }), /together/);
-  assert.throws(() => createPaynowDiscordHandler({ env: { PAYNOW_WEBHOOK_SECRET: secret, PAYNOW_STORE_ID: '67890', DISCORD_PURCHASE_WEBHOOK_URL: 'https://example.invalid/api/webhooks/12345/token' } }), /discord.com/);
+  assert.throws(() => createPaynowDiscordHandler({ env: { PAYNOW_WEBHOOK_SECRET: secret, PAYNOW_STORE_ID: '67890', DISCORD_PURCHASE_BOT_TOKEN: 'test-only-token', DISCORD_PURCHASE_CHANNEL_ID: '../invalid' } }), /CHANNEL_ID together/);
 });
 
 test('embed matches the requested title, text and sampled reference color', () => {
   const order = event().body;
   order.product_names = 'Legend Rank, Keys';
-  const message = supporterMessage(order, 'store.strafemc.net');
+  const message = supporterMessage(order);
   assert.equal(message.embeds[0].title, 'New Purchase Received!');
   assert.equal(message.embeds[0].color, 0x8cde9f);
   assert.equal(message.embeds[0].description,
     '**Cerberooz** has just shown their support to **StrafeMC**!\n\nThank you for helping us grow our community and keep the StrafeMC experience thriving. **We appreciate you!** <:mstar:1549078330844643411>\n\n<:event:1546137196778627072> **Supporter**\nCerberooz\n\n<:strafe2_icon:1549760947269410897> **Purchase**\nLegend Rank, Keys\n\n<:store:1545793616742449195> **Store**\n[Visit our store](https://store.strafemc.net/)\n\n<:hura:1546137558855974933> **Community Goal**\nProgress temporarily unavailable.');
-  assert.equal(message.content, undefined);
-  assert.equal(supporterMessage(order, 'store.strafemc.net', '@everyone').content, undefined);
+  assert.equal(message.content, '');
+  assert.equal(supporterMessage(order, '@everyone').content, '');
 });
 
 function linkEvent(orderId = '54321') {
@@ -236,7 +234,7 @@ function linkRequest(value) {
   return request(value, { 'PayNow-Signature': sign(Buffer.from(JSON.stringify(value)), String(clock), linkSecret) });
 }
 
-test('Discord linking before payment adds only the linked user mention when the order completes', async t => {
+test('Discord linking before payment does not ping the linked user when the order completes', async t => {
   const env = await configuration(t); env.PAYNOW_DISCORD_WEBHOOK_SECRET = linkSecret;
   let calls = 0, message;
   const handler = createPaynowDiscordHandler({ ...options(env), fetchImpl: async (_url, init) => { calls++; message = JSON.parse(init.body); return responseMessage(); } });
@@ -244,8 +242,8 @@ test('Discord linking before payment adds only the linked user mention when the 
   assert.equal(calls, 0);
   const restarted = createPaynowDiscordHandler({ ...options(env), fetchImpl: async (_url, init) => { calls++; message = JSON.parse(init.body); return responseMessage(); } });
   assert.equal((await invoke(restarted, request(event()))).code, 204);
-  assert.equal(message.content, `<@${linkedUserId}>`);
-  assert.deepEqual(message.allowed_mentions, { parse: [], users: [linkedUserId] });
+  assert.equal(message.content, '');
+  assert.deepEqual(message.allowed_mentions, { parse: [] });
   assert.equal(calls, 1);
   assert.equal((await invoke(restarted, linkRequest(linkEvent()))).code, 204);
   assert.equal(calls, 1);
@@ -268,13 +266,13 @@ test('Discord linking after payment edits the saved message and retries failed e
   assert.equal((await invoke(restarted, linkRequest(linkEvent()))).code, 204);
   assert.deepEqual(calls.map(call => call.method), ['POST', 'PATCH', 'PATCH']);
   assert.match(calls[2].url, /\/messages\/234567890123456789$/);
-  assert.equal(calls[2].message.content, `<@${linkedUserId}>`);
+  assert.equal(calls[2].message.content, '');
   assert.deepEqual(calls[2].message.embeds, calls[0].message.embeds);
   assert.equal((await invoke(restarted, linkRequest(linkEvent()))).code, 204);
   assert.equal(calls.length, 3);
 });
 
-test('simultaneous completion and link events produce one post with the mention', async t => {
+test('simultaneous completion and link events produce one post without pinging', async t => {
   const env = await configuration(t); env.PAYNOW_DISCORD_WEBHOOK_SECRET = linkSecret;
   const methods = [];
   const handler = createPaynowDiscordHandler({ ...options(env), fetchImpl: async (_url, init) => { methods.push(init.method); return responseMessage(); } });
@@ -305,8 +303,8 @@ test('one PayNow signing secret authenticates both completion and Discord link e
   assert.equal((await invoke(handler, request(linkEvent()))).code, 204);
   assert.equal((await invoke(handler, request(event()))).code, 204);
   assert.equal(messages.length, 1);
-  assert.equal(messages[0].content, `<@${linkedUserId}>`);
-  assert.deepEqual(messages[0].allowed_mentions, { parse: [], users: [linkedUserId] });
+  assert.equal(messages[0].content, '');
+  assert.deepEqual(messages[0].allowed_mentions, { parse: [] });
   assert.equal((await invoke(handler, request(linkEvent('54322'), { 'PayNow-Signature': sign(Buffer.from(JSON.stringify(linkEvent('54322'))), String(clock), 'wrong') }))).code, 401);
   assert.equal(messages.length, 1);
 });

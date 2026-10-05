@@ -40,7 +40,22 @@ export function createPaynowGoalReader({ env = process.env, fetchImpl = globalTh
         if (!window) throw new Error('Unsupported goal period');
         const summary = await request(`/v2/stores/${env.PAYNOW_STORE_ID}/stats/orders/summary?tz=UTC&revenue_basis=gross`);
         const money = summary[window[0]], count = summary[window[1]];
-        const revenue = money?.amount_minor_units ?? (money === null && count === 0 ? 0 : NaN);
+        let revenue = money?.amount_minor_units ?? (money === null && count === 0 ? 0 : NaN);
+        if (money === null && Number.isSafeInteger(count) && count > 0) {
+          // PayNow can have completed orders but no monetary total for 100%-off
+          // purchases. Verify the whole period is free instead of treating all
+          // missing revenue (including permission-masked values) as zero.
+          const orders = await request(`/v1/stores/${env.PAYNOW_STORE_ID}/orders?limit=100&status=completed&asc=false`);
+          const date = new Date(now());
+          const start = settings.period === 'monthly' ? Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)
+            : settings.period === 'daily' ? Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) : 0;
+          if (!Array.isArray(orders) || orders.some(o => o.status !== 'completed' || !Number.isFinite(Date.parse(o.completed_at)))) {
+            throw new Error('Invalid zero-revenue verification');
+          }
+          const inPeriod = orders.filter(o => Date.parse(o.completed_at) >= start);
+          const complete = orders.length < 100 || orders.some(o => Date.parse(o.completed_at) < start);
+          if (complete && inPeriod.length >= count && inPeriod.every(o => o.total_amount === 0)) revenue = 0;
+        }
         if (!Number.isSafeInteger(revenue) || revenue < 0 || summary.revenue_basis !== 'gross') throw new Error('Invalid goal revenue');
         const percentage = revenue / settings.goalTarget * 100;
         cached = { percentage: settings.allowPercentageOverflow ? percentage : Math.min(percentage, 100), moduleId: module.id };

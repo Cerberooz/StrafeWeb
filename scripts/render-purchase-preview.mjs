@@ -4,7 +4,7 @@ import { createPaynowGoalReader } from '../src/paynow-goal.js';
 
 // Local visual preview generated from the same payload sent to Discord.
 const goal = await createPaynowGoalReader()();
-const message = supporterMessage({ customer: { minecraft: { name: 'Cerberooz' } }, lines: [{ product_name: 'SUPREME Rank' }] }, 'store.strafemc.net', null, { goal });
+const message = supporterMessage({ customer: { minecraft: { name: 'Cerberooz' } }, lines: [{ product_name: 'SUPREME Rank' }] }, null, { goal });
 const embed = message.embeds[0];
 const escape = value => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const markup = escape(embed.description)

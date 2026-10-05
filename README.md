@@ -68,33 +68,23 @@ No credentials or products are fabricated. Missing credentials show empty store 
 
 ## Discord purchase notifications
 
-The webapp can receive PayNow's signed `ON_ORDER_COMPLETED` JSON webhook at `POST /webhooks/paynow` and publish the supporter embed as **store.strafemc.net**. Its title is **Thank you for your support!**, its accent color is **#8CDE9F** (sampled from the supplied reference), and its description is:
+The webapp receives PayNow's signed order-completion events at `POST /webhooks/paynow` and sends **New Purchase Received!** embeds through the Discord bot. The green sidebar stays **#8CDE9F**. The embed includes the supporter, products, store link, community goal progress and player head, with the footer **StrafeMC . The Only Competitive Network You Need.** Prices and billing details are omitted.
 
-```text
-✦ **NEW STRAFEMC SUPPORTER**
-
-👤 **{customer.minecraft.name}**
-📦 **{product_names}**
-
-Thank you for supporting **StrafeMC**.
-Your support helps us keep improving the network. 💙
-```
-
-The webapp substitutes these placeholders from the signed order. It uses PayNow's `product_names` summary, falling back to the order-line names when absent. Billing details are not posted. Bot mode uses the bot's Discord server nickname, avatar and role color automatically; the embed sidebar stays #8CDE9F. Webhook mode defaults to the sender name `store.strafemc.net`. This integration does not require changes to StrafeAPI.
+The webapp substitutes these placeholders from the signed order. It uses PayNow's `product_names` summary, falling back to the order-line names when absent. Billing details are not posted. Bot mode uses the bot's Discord server nickname, avatar and role color automatically; the embed sidebar stays #8CDE9F. This integration does not require changes to StrafeAPI.
 
 Purchase embeds show a Minecraft head thumbnail via Crafty. When the PayNow Minecraft UUID matches a Strafe account, cached canonical account skin metadata is used (including cracked player texture selections). Otherwise the Minecraft username is resolved by Crafty, with its default skin when no official skin exists.
 
-`DISCORD_PURCHASE_PLAYER_AVATAR=true` (default) also uses that head as the message sender picture. Configure `DISCORD_PURCHASE_WEBHOOK_URL` for the purchase channel: Discord webhooks support per-message `avatar_url`, normal bot messages do not. The display name remains `DISCORD_PURCHASE_WEBHOOK_NAME`, and the hosted bot continues running for online presence. Webhook messages do not inherit the bot's server role/name color. If the webhook is absent, announcements fall back to the shared bot avatar and log `purchase_player_avatar_requires_webhook`. Existing bot/webhook receipts are edited through their saved original transport.
+Purchase announcements are sent only by the bot and inherit its server nickname, avatar and role color. The player head remains the embed thumbnail. Legacy delivery records retain duplicate protection, but messages from retired senders are not edited or reposted. Existing bot receipts retain their original channel for edits.
 
-Community Goal reads an enabled `payment_goal` from PayNow using `PAYNOW_API_KEY`, then the v2 order summary's gross revenue in UTC. Grant `webstore_read` and `stats_revenue_read`; masked/null revenue with nonzero orders is unavailable, not zero. Daily, monthly and lifetime windows are supported; other periods show unavailable. Set `PAYNOW_GOAL_MODULE_ID` only to choose between multiple active goals. The percentage respects the module's overflow setting. Requests share a 30-second cache and concurrent fetch; failures back off 15 seconds and never prevent the purchase notification. A receipt retains its purchase-time goal snapshot. No prices are posted. Gross revenue/UTC are this integration's explicit basis; a future custom repeating bossbar can use its own target and cycle rules with the same PayNow totals.
+Community Goal reads an enabled `payment_goal` from PayNow using `PAYNOW_API_KEY`, then the v2 order summary's gross revenue in UTC. Grant `webstore_read`, `stats_revenue_read` and `order_read`. If revenue is null with completed orders, the reader checks up to 100 recent completed orders and only displays zero when the entire goal period is covered and every order total is zero. Missing/paid/incomplete data stays unavailable. Daily, monthly and lifetime windows are supported; other periods show unavailable. Set `PAYNOW_GOAL_MODULE_ID` only to choose between multiple active goals. The percentage respects the module's overflow setting. Requests share a 30-second cache and concurrent fetch; failures back off 15 seconds and never prevent the purchase notification. A receipt retains its purchase-time goal snapshot. No prices are posted. Gross revenue/UTC are this integration's explicit basis; a future custom repeating bossbar can use its own target and cycle rules with the same PayNow totals.
 
 ### Bot setup (colored sender and online status)
 
 1. Open the [Discord Developer Portal](https://discord.com/developers/applications), create an application, and open **Bot**. Set its name/avatar and copy its **bot token** into StrafeWeb's server `.env` as `DISCORD_PURCHASE_BOT_TOKEN`. This differs from an OAuth client secret. Keep the token private. Resetting an existing bot's token also affects other services using that bot.
 2. Under **OAuth2 → URL Generator**, select the **bot** scope and **View Channels**, **Send Messages**, **Embed Links** permissions. Open the generated URL to add the bot to your server. Administrator and privileged Gateway intents are not required.
 3. Enable Discord **User Settings → Advanced → Developer Mode**. Right-click the target text channel, choose **Copy Channel ID**, and set `DISCORD_PURCHASE_CHANNEL_ID`. Ensure the bot has those permissions in this channel, including channel overrides.
-4. Set its server nickname (for example `store.strafemc.net`) and assign a colored role. Gradients require the server's Enhanced Role Styles feature. Its highest applicable colored role determines the sender color. `DISCORD_PURCHASE_WEBHOOK_NAME` is ignored for bot announcements.
-5. Keep your existing PayNow settings, subscriptions and Docker volume. Keep `DISCORD_PURCHASE_WEBHOOK_URL` configured for mention edits to earlier webhook messages; new announcements use the webhook with player pictures by default; set `DISCORD_PURCHASE_PLAYER_AVATAR=false` to use bot messages. Saved bot receipts retain their original channel for later edits.
+4. Set its server nickname (for example `store.strafemc.net`) and assign a colored role. Gradients require the server's Enhanced Role Styles feature. Its highest applicable colored role determines the sender color.
+5. Keep your existing PayNow settings, subscriptions and Docker volume. Remove obsolete Discord webhook URL/name settings from your deployment environment. Saved bot receipts retain their original channel for later edits.
 6. Rebuild and recreate the container using the commands below. The bot connects inside the webapp process, displays Online after login, and reconnects through discord.js after Gateway disconnects. It requests no Gateway intents and does not read chat messages. Shutdown closes the connection. Allow outbound HTTPS and secure WebSocket access to Discord; no extra inbound port is needed.
 
 ```dotenv
@@ -104,17 +94,14 @@ DISCORD_PURCHASE_CHANNEL_ID=your-channel-id
 
 Check `sudo docker logs --tail 100 strafemc-store` for `discord_bot_online`. If you see `discord_bot_login_failed`, check the token/network and restart after correcting it. The webapp continues serving requests if presence login fails. Validate delivery with a new completed order or a previously unsent PayNow event; recorded orders will not be posted again. Local tests do not verify live Discord delivery.
 
-### Webhook setup (alternative)
+### PayNow event setup
 
-1. In Discord, open Server Settings → Integrations → Webhooks and create/select the channel webhook. Copy its URL into `DISCORD_PURCHASE_WEBHOOK_URL` in StrafeWeb's server `.env`. Keep the URL private.
-2. In PayNow, open Integrations → Webhooks and create a **JSON (v1)** webhook subscribed to **Order Completed**, with URL `https://strafemc.net/webhooks/paynow` (use the webapp's actual public hostname). Copy this webhook's signing secret into `PAYNOW_WEBHOOK_SECRET`. This is the webhook secret, not your PayNow API key.
-3. Keep `PAYNOW_STORE_ID` set to the same store. Set `DISCORD_PURCHASE_WEBHOOK_NAME=store.strafemc.net`. Configure the PayNow secret and a Discord destination together; leaving all notification settings empty disables the route with HTTP 503. In Docker set `PAYNOW_WEBHOOK_DATA_DIR=/app/data/paynow-discord`.
-4. Rebuild and recreate the webapp container with the named volume below. Your reverse proxy must forward `/webhooks/paynow`, its JSON body and `PayNow-Signature`/`PayNow-Timestamp` headers to the webapp; it must not require browser login or challenge this route.
-5. Use PayNow's webhook history/resend feature for a completed order to verify delivery. Remove/disable the old direct Discord webhook notification after confirming this one, to avoid two messages.
+1. In PayNow, create a **JSON (v1)** webhook subscribed to **Order Completed**, with URL `https://strafemc.net/webhooks/paynow`. Copy its signing secret into `PAYNOW_WEBHOOK_SECRET`; this is not your API key.
+2. Configure `PAYNOW_STORE_ID`, `DISCORD_PURCHASE_BOT_TOKEN` and `DISCORD_PURCHASE_CHANNEL_ID` together. Leaving all notification settings empty disables the receiver with HTTP 503.
+3. Set `PAYNOW_WEBHOOK_DATA_DIR=/app/data/paynow-discord` in Docker and retain the volume. Your proxy must forward the body and PayNow signature headers.
+4. Rebuild and recreate the container. Disable any separate PayNow-to-Discord delivery integration to avoid duplicate announcements.
 
-For an optional Discord player mention, also subscribe to **Discord Linked to Order** (`ON_DISCORD_ACCOUNT_LINKED_TO_CHECKOUT`). When your PayNow webhook supports both events, use one JSON webhook with **Order Completed** and **Discord Linked to Order**, pointing at the same URL, and set only `PAYNOW_WEBHOOK_SECRET`. Leave `PAYNOW_DISCORD_WEBHOOK_SECRET` empty; both events use the main signing secret. If you use separate PayNow webhooks instead, set the link webhook's secret as the optional `PAYNOW_DISCORD_WEBHOOK_SECRET` override. Recreate the container after changing `.env`. PayNow must have Discord linking configured for the player to link their account; this receiver does not add a Discord login field to checkout.
-
-The linked user's `<@Discord ID>` mention appears above the embed, with only that specific user allowed to be mentioned. Linking before completion saves the verified ID and includes it when payment completes; linking afterward edits the existing message instead of posting another. The description remains exactly as shown above. Messages sent by earlier versions that stored only a timestamp cannot be edited, but are still protected from duplicate posts.
+Purchase announcements never mention or ping the purchaser. `allowed_mentions` disables mention parsing, and the message contains only the embed. Discord-link events are accepted for compatibility, but do not add a user mention. PayNow only needs the **Order Completed** subscription for purchase announcements.
 
 From the updated StrafeWeb directory on your VPS, after saving `.env`:
 
@@ -167,5 +154,7 @@ The checkout uses one centered username/order/total card. Its CHECKOUT action cr
 `pnpm build:prod` completed. Every EJS page compiled, and local unconfigured-service smoke requests returned HTTP 200 for home, ranks, tiers, checkout, completion and CSS. Browser visual review covered all six design screens at desktop and 390px mobile width. Populated ranks, checkout, team and solo states were reviewed using temporary Figma sample data; those fixtures are not part of production. Captures are saved in `design-review/`. `pnpm audit --prod` reported no known vulnerabilities. Live provider checkout and remote leaderboards require deployment credentials and were not executed.
 
 See [SECURITY_REVIEW.md](SECURITY_REVIEW.md) for the component review and deployment considerations.
+
+
 
 
