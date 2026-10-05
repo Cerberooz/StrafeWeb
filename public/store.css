@@ -137,3 +137,6 @@
 .season-switcher .checkout-select{width:230px;max-width:calc(100vw - 100px);text-align:left}
 .season-switcher .checkout-select-trigger{height:auto;font-size:14px;font-weight:600}
 .season-switcher .checkout-select-option{height:auto;font-size:14px;font-weight:500}
+
+/* Use hinted system glyphs for compact controls instead of the variable display font. */
+.button,.checkout-select-trigger,.checkout-select-option{font-family:Arial,Helvetica,sans-serif;font-synthesis:none;text-shadow:none}
