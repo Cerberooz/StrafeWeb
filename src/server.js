@@ -11,6 +11,7 @@ import { comparison, httpsUrl, rankImageHosts } from './markup.js';
 import { accountPortraits, teamRosterPortraits, portraitOrigin } from './portraits.js';
 import { serverStatus } from './server-status.js';
 import { createPaynowDiscordHandler } from './paynow-discord.js';
+import { startDiscordBot } from './discord-bot.js';
 
 const app = express();
 const production = process.env.NODE_ENV === 'production';
@@ -253,5 +254,10 @@ app.use((error, req, res, next) => { console.error('Store request failed:', erro
 const port = Number(process.env.PORT || 5020);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be between 1 and 65535.');
 const server = app.listen(port, process.env.HOST || '0.0.0.0', () => console.log(`StrafeMC SSR store listening on port ${port}`));
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10_000).unref(); });
+const discordBot = startDiscordBot().catch(() => { console.error(JSON.stringify({ event: 'discord_bot_start_failed' })); return null; });
+for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, () => {
+  const closed = new Promise(resolve => server.close(resolve));
+  Promise.all([closed, discordBot.then(client => client?.destroy())]).then(() => process.exit(0), () => process.exit(1));
+  setTimeout(() => process.exit(1), 10_000).unref();
+});
 

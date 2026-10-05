@@ -45,13 +45,19 @@ export function createPaynowDiscordHandler({ env = process.env, fetchImpl = glob
   const secret = env.PAYNOW_WEBHOOK_SECRET;
   const linkSecret = env.PAYNOW_DISCORD_WEBHOOK_SECRET || secret;
   const endpoint = env.DISCORD_PURCHASE_WEBHOOK_URL;
-  if (!secret && !endpoint && !linkSecret) return async (_req, res) => res.status(503).json({ error: 'Notifications are not configured' });
-  if (!secret || !endpoint || !flake(env.PAYNOW_STORE_ID)) throw new Error('Set PAYNOW_WEBHOOK_SECRET, DISCORD_PURCHASE_WEBHOOK_URL and PAYNOW_STORE_ID together.');
+  const botToken = env.DISCORD_PURCHASE_BOT_TOKEN;
+  const channelId = env.DISCORD_PURCHASE_CHANNEL_ID;
+  if (!secret && !endpoint && !linkSecret && !botToken && !channelId) return async (_req, res) => res.status(503).json({ error: 'Notifications are not configured' });
+  if ((botToken || channelId) && (!botToken || !discordId(channelId) || /\s/.test(botToken))) throw new Error('Set DISCORD_PURCHASE_BOT_TOKEN and a valid DISCORD_PURCHASE_CHANNEL_ID together.');
+  if (!secret || (!endpoint && !botToken) || !flake(env.PAYNOW_STORE_ID)) throw new Error('Set PAYNOW_WEBHOOK_SECRET, PAYNOW_STORE_ID and a Discord webhook or bot destination together.');
   let url;
-  try { url = new URL(endpoint); } catch { throw new Error('Invalid DISCORD_PURCHASE_WEBHOOK_URL.'); }
-  if (url.origin !== 'https://discord.com' || !/^\/api(?:\/v\d+)?\/webhooks\/\d{1,30}\/[A-Za-z0-9_-]+$/.test(url.pathname)
+  if (endpoint) {
+    try { url = new URL(endpoint); } catch { throw new Error('Invalid DISCORD_PURCHASE_WEBHOOK_URL.'); }
+    if (url.origin !== 'https://discord.com' || !/^\/api(?:\/v\d+)?\/webhooks\/\d{1,30}\/[A-Za-z0-9_-]+$/.test(url.pathname)
     || url.username || url.password || url.search || url.hash) throw new Error('Use an HTTPS discord.com webhook URL without query parameters.');
-  url.searchParams.set('wait', 'true');
+    url.searchParams.set('wait', 'true');
+  }
+  const transport = botToken ? { kind: 'bot', channelId } : { kind: 'webhook' };
   const username = text(env.DISCORD_PURCHASE_WEBHOOK_NAME || 'store.strafemc.net', 80).trim();
   if (!username || /clyde|discord/i.test(username)) throw new Error('Invalid DISCORD_PURCHASE_WEBHOOK_NAME.');
   const directory = resolve(env.PAYNOW_WEBHOOK_DATA_DIR || './data/paynow-discord');
@@ -72,17 +78,27 @@ export function createPaynowDiscordHandler({ env = process.env, fetchImpl = glob
     } finally { await unlink(temporary).catch(() => {}); }
   }
 
-  async function discordRequest(message, messageId) {
-    const destination = new URL(url);
+  async function discordRequest(message, messageId, sender = transport) {
+    const headers = { 'Content-Type': 'application/json' };
+    let destination;
+    const payload = { ...message };
+    if (sender.kind === 'bot') {
+      if (!botToken || !discordId(sender.channelId)) throw new Error('Saved bot destination is not configured');
+      destination = new URL(`https://discord.com/api/v10/channels/${sender.channelId}/messages`);
+      headers.Authorization = `Bot ${botToken}`;
+      delete payload.username;
+      delete payload.avatar_url;
+    } else if (sender.kind === 'webhook' && url) destination = new URL(url);
+    else throw new Error('Saved webhook destination is not configured');
     if (messageId) {
       if (!discordId(messageId)) throw new Error('Invalid saved Discord message ID');
-      destination.pathname += `/messages/${messageId}`;
+      destination.pathname += sender.kind === 'bot' ? `/${messageId}` : `/messages/${messageId}`;
       destination.search = '';
     }
     const response = await fetchImpl(destination.href, {
       method: messageId ? 'PATCH' : 'POST', redirect: 'error', signal: AbortSignal.timeout(10_000),
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(message),
+      headers,
+      body: JSON.stringify(payload),
     });
     // Do not include Discord's URL/token or response body in logs.
     if (!response.ok || messageId) {
@@ -117,7 +133,8 @@ export function createPaynowDiscordHandler({ env = process.env, fetchImpl = glob
       if (!discordId(receipt.messageId) || !receipt.message || !Array.isArray(receipt.message.embeds)) throw new Error('Invalid saved notification receipt');
       if (discordId(userId) && receipt.discordUserId !== userId) {
         receipt.message = withDiscordMention(receipt.message, userId);
-        await discordRequest(receipt.message, receipt.messageId);
+        // Older receipts belong to the original incoming webhook, not the bot.
+        await discordRequest(receipt.message, receipt.messageId, receipt.transport || { kind: 'webhook' });
         receipt.discordUserId = userId;
         await save(marker, JSON.stringify(receipt));
       }
@@ -126,8 +143,9 @@ export function createPaynowDiscordHandler({ env = process.env, fetchImpl = glob
     // Linking is not evidence of payment. Wait for the Order Completed webhook.
     if (!order) return;
     const message = supporterMessage(order, username, userId);
+    if (botToken) delete message.username;
     const messageId = await discordRequest(message);
-    await save(marker, JSON.stringify({ messageId, message, discordUserId: discordId(userId) ? userId : null }));
+    await save(marker, JSON.stringify({ messageId, message, transport, discordUserId: discordId(userId) ? userId : null }));
   }
 
   return async (req, res) => {

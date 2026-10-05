@@ -1,10 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createPaynowDiscordHandler, validPaynowSignature, supporterMessage } from '../src/paynow-discord.js';
+import { EventEmitter } from 'node:events';
+import { startDiscordBot } from '../src/discord-bot.js';
 
 const clock = 1_800_000_000_000;
 const secret = 'test-only-signing-secret';
@@ -39,6 +41,85 @@ async function configuration(t) {
     PAYNOW_WEBHOOK_DATA_DIR: directory };
 }
 const options = env => ({ env, now: () => clock, logger: { error() {} } });
+
+test('bot announcements inherit identity, retain mentions and edit their original channel after restart', async t => {
+  const env = await configuration(t);
+  delete env.DISCORD_PURCHASE_WEBHOOK_URL;
+  env.DISCORD_PURCHASE_BOT_TOKEN = 'test-only-bot-token';
+  env.DISCORD_PURCHASE_CHANNEL_ID = '345678901234567890';
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, ...init, message: JSON.parse(init.body) });
+    return responseMessage();
+  };
+  const handler = createPaynowDiscordHandler({ ...options(env), fetchImpl });
+  assert.equal((await invoke(handler, request(event()))).code, 204);
+  assert.equal(calls[0].url, 'https://discord.com/api/v10/channels/345678901234567890/messages');
+  assert.equal(calls[0].headers.Authorization, 'Bot test-only-bot-token');
+  assert.equal(calls[0].message.username, undefined);
+  assert.equal(calls[0].message.avatar_url, undefined);
+  env.DISCORD_PURCHASE_CHANNEL_ID = '456789012345678901';
+  const restarted = createPaynowDiscordHandler({ ...options(env), fetchImpl });
+  assert.equal((await invoke(restarted, request(event()))).code, 204);
+  assert.equal((await invoke(restarted, request(linkEvent()))).code, 204);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].method, 'PATCH');
+  assert.equal(calls[1].url, `${calls[0].url}/234567890123456789`);
+  assert.equal(calls[1].message.content, `<@${linkedUserId}>`);
+});
+
+test('switching to bot mode preserves old webhook edits and uses the bot for new orders', async t => {
+  const env = await configuration(t);
+  const calls = [];
+  const fetchImpl = async (url, init) => { calls.push({ url, ...init }); return responseMessage(); };
+  assert.equal((await invoke(createPaynowDiscordHandler({ ...options(env), fetchImpl }), request(event()))).code, 204);
+  // Deployed receipts from before bot support have no transport field.
+  const filename = (await readdir(env.PAYNOW_WEBHOOK_DATA_DIR)).find(name => name.endsWith('.sent'));
+  const path = join(env.PAYNOW_WEBHOOK_DATA_DIR, filename);
+  const receipt = JSON.parse(await readFile(path, 'utf8'));
+  delete receipt.transport;
+  await writeFile(path, JSON.stringify(receipt));
+  env.DISCORD_PURCHASE_BOT_TOKEN = 'test-only-bot-token';
+  env.DISCORD_PURCHASE_CHANNEL_ID = '345678901234567890';
+  const handler = createPaynowDiscordHandler({ ...options(env), fetchImpl });
+  assert.equal((await invoke(handler, request(linkEvent()))).code, 204);
+  assert.match(calls[1].url, /\/webhooks\/12345\/test-only-token\/messages\//);
+  assert.equal(calls[1].headers.Authorization, undefined);
+  const next = event(); next.body.id = '54322';
+  assert.equal((await invoke(handler, request(next))).code, 204);
+  assert.match(calls[2].url, /\/channels\/345678901234567890\/messages$/);
+});
+
+test('partial bot settings fail startup instead of silently using a webhook', async t => {
+  const env = await configuration(t);
+  env.DISCORD_PURCHASE_BOT_TOKEN = 'test-only-bot-token';
+  assert.throws(() => createPaynowDiscordHandler(options(env)), /CHANNEL_ID together/);
+  env.DISCORD_PURCHASE_CHANNEL_ID = '../invalid';
+  assert.throws(() => createPaynowDiscordHandler(options(env)), /CHANNEL_ID together/);
+});
+
+test('online presence uses no privileged intents and login failure is sanitized and cleaned up', async () => {
+  let instance;
+  class FakeClient extends EventEmitter {
+    constructor(settings) { super(); this.settings = settings; instance = this; }
+    async login(token) { this.token = token; this.emit('clientReady'); }
+    async destroy() { this.destroyed = true; }
+  }
+  const logs = [];
+  const settings = { env: { DISCORD_PURCHASE_BOT_TOKEN: 'private-test-token' }, ClientClass: FakeClient,
+    logger: { info: value => logs.push(value), error: value => logs.push(value) } };
+  assert.equal(await startDiscordBot({ env: {} }), null);
+  const client = await startDiscordBot(settings);
+  assert.deepEqual(client.settings.intents, []);
+  assert.equal(client.settings.presence.status, 'online');
+  client.emit('error', new Error('private-test-token'));
+  await client.destroy();
+  FakeClient.prototype.login = async () => { throw new Error('private-test-token'); };
+  assert.equal(await startDiscordBot(settings), null);
+  assert.equal(instance.destroyed, true);
+  assert.match(logs.join(' '), /discord_bot_online.*discord_bot_login_failed/);
+  assert.doesNotMatch(logs.join(' '), /private-test-token/);
+});
 
 test('signature covers exact raw bytes and rejects altered, expired, future and malformed requests', () => {
   const raw = Buffer.from('{"a":1}');

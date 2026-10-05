@@ -4,7 +4,9 @@
   "private": true,
   "packageManager": "pnpm@10.18.3",
   "type": "module",
-  "engines": { "node": ">=22.9" },
+  "engines": {
+    "node": ">=22.9"
+  },
   "scripts": {
     "dev": "node --env-file-if-exists=.env --watch src/server.js",
     "build": "pnpm build:prod",
@@ -15,11 +17,14 @@
   "dependencies": {
     "cheerio": "^1.1.2",
     "cookie-parser": "^1.4.7",
+    "discord.js": "^14.27.0",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-rate-limit": "^8.1.0",
     "helmet": "^8.1.0",
     "sanitize-html": "^2.17.0"
   },
-  "devDependencies": { "esbuild": "^0.25.10" }
+  "devDependencies": {
+    "esbuild": "^0.25.10"
+  }
 }
