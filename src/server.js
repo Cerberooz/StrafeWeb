@@ -59,7 +59,7 @@ if (!Number.isSafeInteger(trustProxyHops) || trustProxyHops < 0 || trustProxyHop
 app.set('trust proxy', trustProxyHops);
 app.set('view engine', 'ejs'); app.set('views', resolve(baseDir, 'views'));
 const markupImageSources = rankImageHosts.map(host => `https://${host}`);
-app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", ...markupImageSources], scriptSrc: ["'self'"], styleSrc: ["'self'"], connectSrc: ["'self'"], frameSrc: ["'none'"], objectSrc: ["'none'"], formAction: ["'self'"], baseUri: ["'none'"], upgradeInsecureRequests: production ? [] : null } }, strictTransportSecurity: production ? undefined : false }));
+app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], imgSrc: ["'self'", ...markupImageSources], scriptSrc: ["'self'"], styleSrc: ["'self'"], connectSrc: ["'self'"], frameSrc: ["'none'"], objectSrc: ["'none'"], formAction: ["'self'", 'https://paynow.gg', 'https://*.paynow.gg'], baseUri: ["'none'"], upgradeInsecureRequests: production ? [] : null } }, strictTransportSecurity: production ? undefined : false }));
 app.use((req, res, next) => {
   const render = res.render;
   res.render = function (view, options = {}, callback) {
