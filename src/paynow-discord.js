@@ -2,6 +2,8 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { mkdirSync, accessSync, constants } from 'node:fs';
 import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { createPaynowGoalReader, goalProgress } from './paynow-goal.js';
+import { accountPortraits } from './portraits.js';
 
 const flake = value => typeof value === 'string' && /^\d{1,30}$/.test(value);
 const discordId = value => typeof value === 'string' && /^\d{17,20}$/.test(value);
@@ -18,18 +20,23 @@ export function validPaynowSignature(raw, timestamp, signature, secret, now = Da
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }
 
-export function supporterMessage(order, username, linkedUserId) {
+export function supporterMessage(order, username, linkedUserId, { goal = null, portraitUrl } = {}) {
   const player = discordText(order.customer?.minecraft?.name || order.customer?.profile?.name || order.customer?.name || 'A player', 100);
   const productNames = typeof order.product_names === 'string' && order.product_names.trim()
     ? order.product_names : order.lines.map(line => line.product_name || line.product?.name).join(', ');
   const products = discordText(productNames, 1000);
+  const name = order.customer?.minecraft?.name;
+  const fallbackPortrait = `https://render.crafty.gg/2d/head/${typeof name === 'string' && /^[A-Za-z0-9_]{3,16}$/.test(name) ? name : 'MHF_Steve'}?size=128`;
   return withDiscordMention({
     username,
+    avatar_url: portraitUrl || fallbackPortrait,
     allowed_mentions: { parse: [] },
     embeds: [{
-      title: 'Thank you for your support!',
+      title: 'New Purchase Received!',
       color: 0x8cde9f,
-      description: `✦ **NEW STRAFEMC SUPPORTER**\n\n👤 **${player}**\n📦 **${products}**\n\nThank you for supporting **StrafeMC**.\nYour support helps us keep improving the network. 💙`,
+      description: `**${player}** has just shown their support to **StrafeMC**!\n\nThank you for helping us grow our community and keep the StrafeMC experience thriving. **We appreciate you!** <:mstar:1549078330844643411>\n\n<:event:1546137196778627072> **Supporter**\n${player}\n\n<:strafe2_icon:1549760947269410897> **Purchase**\n${products}\n\n<:store:1545793616742449195> **Store**\n[Visit our store](https://store.strafemc.net/)\n\n<:hura:1546137558855974933> **Community Goal**\n${goalProgress(goal)}`,
+      thumbnail: { url: portraitUrl || fallbackPortrait },
+      footer: { text: 'StrafeMC . The Only Competitive Network You Need.' },
     }],
   }, linkedUserId);
 }
@@ -57,13 +64,18 @@ export function createPaynowDiscordHandler({ env = process.env, fetchImpl = glob
     || url.username || url.password || url.search || url.hash) throw new Error('Use an HTTPS discord.com webhook URL without query parameters.');
     url.searchParams.set('wait', 'true');
   }
-  const transport = botToken ? { kind: 'bot', channelId } : { kind: 'webhook' };
+  const playerAvatar = env.DISCORD_PURCHASE_PLAYER_AVATAR !== 'false';
+  // Only webhooks support a per-message sender picture. Bot presence is separate.
+  const transport = playerAvatar && url ? { kind: 'webhook' }
+    : botToken ? { kind: 'bot', channelId } : { kind: 'webhook' };
+  if (playerAvatar && !url) logger.warn(JSON.stringify({ event: 'purchase_player_avatar_requires_webhook' }));
   const username = text(env.DISCORD_PURCHASE_WEBHOOK_NAME || 'store.strafemc.net', 80).trim();
   if (!username || /clyde|discord/i.test(username)) throw new Error('Invalid DISCORD_PURCHASE_WEBHOOK_NAME.');
   const directory = resolve(env.PAYNOW_WEBHOOK_DATA_DIR || './data/paynow-discord');
   mkdirSync(directory, { recursive: true });
   accessSync(directory, constants.W_OK);
   const pending = new Map();
+  const readGoal = createPaynowGoalReader({ env, fetchImpl, now, logger });
 
   async function readOptional(path) {
     try { return await readFile(path, 'utf8'); } catch (error) { if (error.code !== 'ENOENT') throw error; return null; }
@@ -91,6 +103,9 @@ export function createPaynowDiscordHandler({ env = process.env, fetchImpl = glob
     } else if (sender.kind === 'webhook' && url) destination = new URL(url);
     else throw new Error('Saved webhook destination is not configured');
     if (messageId) {
+      // Sender identity belongs to the original message and cannot be edited.
+      delete payload.username;
+      delete payload.avatar_url;
       if (!discordId(messageId)) throw new Error('Invalid saved Discord message ID');
       destination.pathname += sender.kind === 'bot' ? `/${messageId}` : `/messages/${messageId}`;
       destination.search = '';
@@ -142,8 +157,17 @@ export function createPaynowDiscordHandler({ env = process.env, fetchImpl = glob
     }
     // Linking is not evidence of payment. Wait for the Order Completed webhook.
     if (!order) return;
-    const message = supporterMessage(order, username, userId);
-    if (botToken) delete message.username;
+    const rawPlayerId = order.customer?.minecraft?.id;
+    const playerId = typeof rawPlayerId === 'string' && /^[a-f0-9]{32}$/i.test(rawPlayerId)
+      ? rawPlayerId.replace(/^(........)(....)(....)(....)(............)$/, '$1-$2-$3-$4-$5') : rawPlayerId;
+    const [goal, appearances] = await Promise.all([
+      readGoal(),
+      accountPortraits([{ subjectId: playerId }]).catch(() => []),
+    ]);
+    // Canonical premium UUID / cracked texture from Strafe, using the existing cache.
+    const portraitUrl = appearances[0]?.portraitUrl?.replace('/3d/bust/', '/2d/head/');
+    const message = supporterMessage(order, username, userId, { goal, portraitUrl });
+    if (transport.kind === 'bot') { delete message.username; delete message.avatar_url; }
     const messageId = await discordRequest(message);
     await save(marker, JSON.stringify({ messageId, message, transport, discordUserId: discordId(userId) ? userId : null }));
   }

@@ -82,13 +82,19 @@ Your support helps us keep improving the network. 💙
 
 The webapp substitutes these placeholders from the signed order. It uses PayNow's `product_names` summary, falling back to the order-line names when absent. Billing details are not posted. Bot mode uses the bot's Discord server nickname, avatar and role color automatically; the embed sidebar stays #8CDE9F. Webhook mode defaults to the sender name `store.strafemc.net`. This integration does not require changes to StrafeAPI.
 
+Purchase embeds show a Minecraft head thumbnail via Crafty. When the PayNow Minecraft UUID matches a Strafe account, cached canonical account skin metadata is used (including cracked player texture selections). Otherwise the Minecraft username is resolved by Crafty, with its default skin when no official skin exists.
+
+`DISCORD_PURCHASE_PLAYER_AVATAR=true` (default) also uses that head as the message sender picture. Configure `DISCORD_PURCHASE_WEBHOOK_URL` for the purchase channel: Discord webhooks support per-message `avatar_url`, normal bot messages do not. The display name remains `DISCORD_PURCHASE_WEBHOOK_NAME`, and the hosted bot continues running for online presence. Webhook messages do not inherit the bot's server role/name color. If the webhook is absent, announcements fall back to the shared bot avatar and log `purchase_player_avatar_requires_webhook`. Existing bot/webhook receipts are edited through their saved original transport.
+
+Community Goal reads an enabled `payment_goal` from PayNow using `PAYNOW_API_KEY`, then the v2 order summary's gross revenue in UTC. Grant `webstore_read` and `stats_revenue_read`; masked/null revenue with nonzero orders is unavailable, not zero. Daily, monthly and lifetime windows are supported; other periods show unavailable. Set `PAYNOW_GOAL_MODULE_ID` only to choose between multiple active goals. The percentage respects the module's overflow setting. Requests share a 30-second cache and concurrent fetch; failures back off 15 seconds and never prevent the purchase notification. A receipt retains its purchase-time goal snapshot. No prices are posted. Gross revenue/UTC are this integration's explicit basis; a future custom repeating bossbar can use its own target and cycle rules with the same PayNow totals.
+
 ### Bot setup (colored sender and online status)
 
 1. Open the [Discord Developer Portal](https://discord.com/developers/applications), create an application, and open **Bot**. Set its name/avatar and copy its **bot token** into StrafeWeb's server `.env` as `DISCORD_PURCHASE_BOT_TOKEN`. This differs from an OAuth client secret. Keep the token private. Resetting an existing bot's token also affects other services using that bot.
 2. Under **OAuth2 → URL Generator**, select the **bot** scope and **View Channels**, **Send Messages**, **Embed Links** permissions. Open the generated URL to add the bot to your server. Administrator and privileged Gateway intents are not required.
 3. Enable Discord **User Settings → Advanced → Developer Mode**. Right-click the target text channel, choose **Copy Channel ID**, and set `DISCORD_PURCHASE_CHANNEL_ID`. Ensure the bot has those permissions in this channel, including channel overrides.
 4. Set its server nickname (for example `store.strafemc.net`) and assign a colored role. Gradients require the server's Enhanced Role Styles feature. Its highest applicable colored role determines the sender color. `DISCORD_PURCHASE_WEBHOOK_NAME` is ignored for bot announcements.
-5. Keep your existing PayNow settings, subscriptions and Docker volume. Keep `DISCORD_PURCHASE_WEBHOOK_URL` configured for mention edits to earlier webhook messages; new announcements use the bot when both bot settings are present. Saved bot receipts retain their original channel for later edits.
+5. Keep your existing PayNow settings, subscriptions and Docker volume. Keep `DISCORD_PURCHASE_WEBHOOK_URL` configured for mention edits to earlier webhook messages; new announcements use the webhook with player pictures by default; set `DISCORD_PURCHASE_PLAYER_AVATAR=false` to use bot messages. Saved bot receipts retain their original channel for later edits.
 6. Rebuild and recreate the container using the commands below. The bot connects inside the webapp process, displays Online after login, and reconnects through discord.js after Gateway disconnects. It requests no Gateway intents and does not read chat messages. Shutdown closes the connection. Allow outbound HTTPS and secure WebSocket access to Discord; no extra inbound port is needed.
 
 ```dotenv
@@ -161,4 +167,5 @@ The checkout uses one centered username/order/total card. Its CHECKOUT action cr
 `pnpm build:prod` completed. Every EJS page compiled, and local unconfigured-service smoke requests returned HTTP 200 for home, ranks, tiers, checkout, completion and CSS. Browser visual review covered all six design screens at desktop and 390px mobile width. Populated ranks, checkout, team and solo states were reviewed using temporary Figma sample data; those fixtures are not part of production. Captures are saved in `design-review/`. `pnpm audit --prod` reported no known vulnerabilities. Live provider checkout and remote leaderboards require deployment credentials and were not executed.
 
 See [SECURITY_REVIEW.md](SECURITY_REVIEW.md) for the component review and deployment considerations.
+
 

@@ -70,6 +70,7 @@ test('bot announcements inherit identity, retain mentions and edit their origina
 
 test('switching to bot mode preserves old webhook edits and uses the bot for new orders', async t => {
   const env = await configuration(t);
+  env.DISCORD_PURCHASE_PLAYER_AVATAR = 'false';
   const calls = [];
   const fetchImpl = async (url, init) => { calls.push({ url, ...init }); return responseMessage(); };
   assert.equal((await invoke(createPaynowDiscordHandler({ ...options(env), fetchImpl }), request(event()))).code, 204);
@@ -217,10 +218,10 @@ test('embed matches the requested title, text and sampled reference color', () =
   const order = event().body;
   order.product_names = 'Legend Rank, Keys';
   const message = supporterMessage(order, 'store.strafemc.net');
-  assert.equal(message.embeds[0].title, 'Thank you for your support!');
+  assert.equal(message.embeds[0].title, 'New Purchase Received!');
   assert.equal(message.embeds[0].color, 0x8cde9f);
   assert.equal(message.embeds[0].description,
-    '✦ **NEW STRAFEMC SUPPORTER**\n\n👤 **Cerberooz**\n📦 **Legend Rank, Keys**\n\nThank you for supporting **StrafeMC**.\nYour support helps us keep improving the network. 💙');
+    '**Cerberooz** has just shown their support to **StrafeMC**!\n\nThank you for helping us grow our community and keep the StrafeMC experience thriving. **We appreciate you!** <:mstar:1549078330844643411>\n\n<:event:1546137196778627072> **Supporter**\nCerberooz\n\n<:strafe2_icon:1549760947269410897> **Purchase**\nLegend Rank, Keys\n\n<:store:1545793616742449195> **Store**\n[Visit our store](https://store.strafemc.net/)\n\n<:hura:1546137558855974933> **Community Goal**\nProgress temporarily unavailable.');
   assert.equal(message.content, undefined);
   assert.equal(supporterMessage(order, 'store.strafemc.net', '@everyone').content, undefined);
 });
@@ -309,3 +310,4 @@ test('one PayNow signing secret authenticates both completion and Discord link e
   assert.equal((await invoke(handler, request(linkEvent('54322'), { 'PayNow-Signature': sign(Buffer.from(JSON.stringify(linkEvent('54322'))), String(clock), 'wrong') }))).code, 401);
   assert.equal(messages.length, 1);
 });
+
