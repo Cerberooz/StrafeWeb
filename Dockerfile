@@ -20,6 +20,8 @@ WORKDIR /app
 COPY --chown=node:node package.json ./
 COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
+RUN mkdir -p /app/data/paynow-discord && chown -R node:node /app/data
+ENV PAYNOW_WEBHOOK_DATA_DIR=/app/data/paynow-discord
 USER node
 EXPOSE 5020
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD node -e "const port = process.env.PORT || 5020; fetch('http://127.0.0.1:' + port + '/health').then(response => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"

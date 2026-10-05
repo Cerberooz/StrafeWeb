@@ -30,6 +30,7 @@ docker run -d \
   --name strafemc-store \
   --restart unless-stopped \
   --env-file .env \
+  --mount type=volume,source=strafemc-store-data,target=/app/data \
   -e HOST=0.0.0.0 \
   --publish 127.0.0.1:5020:5020 \
   strafemc-store:latest
@@ -64,6 +65,56 @@ Choose a PayNow product, enter the Minecraft Java username, select billing/custo
 The resulting `{url}` must be HTTPS on `paynow.gg` or one of its subdomains. `return_url` and `cancel_url` come from configured `PUBLIC_BASE_URL`. The completion page does not grant purchases or assert payment success; PayNow handles its configured delivery. Any future custom fulfillment must consume verified PayNow webhooks with durable replay protection, never a browser redirect.
 
 No credentials or products are fabricated. Missing credentials show empty store states; unavailable providers show a retry message; unmapped/unconfigured products cannot create a payment session.
+
+## Discord purchase notifications
+
+The webapp can receive PayNow's signed `ON_ORDER_COMPLETED` JSON webhook at `POST /webhooks/paynow` and publish the supporter embed as **store.strafemc.net**. Its title is **Thank you for your support!**, its accent color is **#B3ECFF** (sampled from the supplied reference), and its description is:
+
+```text
+✦ **NEW STRAFEMC SUPPORTER**
+
+👤 **{customer.minecraft.name}**
+📦 **{product_names}**
+
+Thank you for supporting **StrafeMC**.
+Your support helps us keep improving the network. 💙
+```
+
+The webapp substitutes these placeholders from the signed order. It uses PayNow's `product_names` summary, falling back to the order-line names when absent. Billing details are not posted. The sender defaults to `store.strafemc.net` independently of the site's current domain. This integration does not require changes to StrafeAPI.
+
+1. In Discord, open Server Settings → Integrations → Webhooks and create/select the channel webhook. Copy its URL into `DISCORD_PURCHASE_WEBHOOK_URL` in StrafeWeb's server `.env`. Keep the URL private.
+2. In PayNow, open Integrations → Webhooks and create a **JSON (v1)** webhook subscribed to **Order Completed**, with URL `https://strafemc.net/webhooks/paynow` (use the webapp's actual public hostname). Copy this webhook's signing secret into `PAYNOW_WEBHOOK_SECRET`. This is the webhook secret, not your PayNow API key.
+3. Keep `PAYNOW_STORE_ID` set to the same store. Set `DISCORD_PURCHASE_WEBHOOK_NAME=store.strafemc.net`. Both new secrets must be configured together; leaving both empty disables the route with HTTP 503. In Docker set `PAYNOW_WEBHOOK_DATA_DIR=/app/data/paynow-discord`.
+4. Rebuild and recreate the webapp container with the named volume below. Your reverse proxy must forward `/webhooks/paynow`, its JSON body and `PayNow-Signature`/`PayNow-Timestamp` headers to the webapp; it must not require browser login or challenge this route.
+5. Use PayNow's webhook history/resend feature for a completed order to verify delivery. Remove/disable the old direct Discord webhook notification after confirming this one, to avoid two messages.
+
+For an optional Discord player mention, also subscribe to **Discord Linked to Order** (`ON_DISCORD_ACCOUNT_LINKED_TO_CHECKOUT`). When your PayNow webhook supports both events, use one JSON webhook with **Order Completed** and **Discord Linked to Order**, pointing at the same URL, and set only `PAYNOW_WEBHOOK_SECRET`. Leave `PAYNOW_DISCORD_WEBHOOK_SECRET` empty; both events use the main signing secret. If you use separate PayNow webhooks instead, set the link webhook's secret as the optional `PAYNOW_DISCORD_WEBHOOK_SECRET` override. Recreate the container after changing `.env`. PayNow must have Discord linking configured for the player to link their account; this receiver does not add a Discord login field to checkout.
+
+The linked user's `<@Discord ID>` mention appears above the embed, with only that specific user allowed to be mentioned. Linking before completion saves the verified ID and includes it when payment completes; linking afterward edits the existing message instead of posting another. The description remains exactly as shown above. Messages sent by earlier versions that stored only a timestamp cannot be edited, but are still protected from duplicate posts.
+
+From the updated StrafeWeb directory on your VPS, after saving `.env`:
+
+```sh
+sudo docker build -t strafemc-store:latest .
+# Continue only after a successful build.
+sudo docker stop strafemc-store
+sudo docker rm strafemc-store
+sudo docker run -d \
+  --name strafemc-store \
+  --restart unless-stopped \
+  --env-file .env \
+  -e HOST=0.0.0.0 \
+  --mount type=volume,source=strafemc-store-data,target=/app/data \
+  --publish 127.0.0.1:5020:5020 \
+  strafemc-store:latest
+sudo docker logs --tail 50 strafemc-store
+```
+
+The image creates `/app/data` owned by its `node` runtime user; Docker copies that ownership into a new named volume. Existing/bind-mounted volumes must also be writable by that user (UID 1000). Keep this volume when replacing the container.
+
+Signatures use HMAC-SHA256/base64 over the original `timestamp.body` bytes, with a five-minute timestamp tolerance and store ID validation. Completed orders create notifications; the optional Discord-link event can only save a linked ID or edit a previously confirmed purchase notification. Successful sends/edits return 204; failures return 503 so PayNow can retry. Events for each order run in sequence. Completed order IDs, minimal message content, Discord message IDs and verified linked user IDs are recorded in the mounted directory and survive restarts. Run one webapp replica with this file-based notification store. There is a small duplicate window if Discord accepts a post but the request times out or the process stops before saving its receipt; Discord webhooks do not offer an idempotency key. Notifications do not grant purchases or ranks.
+
+Run `node --test tests/paynow-discord.test.mjs` to check signature validation, store isolation, safe message content, retry behavior and persistence without sending real notifications. Official references: [PayNow signature validation](https://docs.paynow.gg/webhooks/validating-incoming-webhooks/), [Order Completed payload](https://docs.paynow.gg/webhooks/events/on-order-completed/) and [Discord webhooks](https://docs.discord.com/developers/resources/webhook#execute-webhook).
 
 ## Performance and production limits
 

@@ -10,6 +10,7 @@ import { catalog, rankCategory, leaderboard, paynowReady, paynowProducts, jsonRe
 import { comparison, httpsUrl, rankImageHosts } from './markup.js';
 import { accountPortraits, teamRosterPortraits, portraitOrigin } from './portraits.js';
 import { serverStatus } from './server-status.js';
+import { createPaynowDiscordHandler } from './paynow-discord.js';
 
 const app = express();
 const production = process.env.NODE_ENV === 'production';
@@ -77,6 +78,13 @@ app.use((req, res, next) => {
   };
   next();
 });
+// PayNow authenticates with an HMAC over the raw body, before browser sessions/CSRF.
+app.post('/webhooks/paynow',
+  rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }),
+  express.raw({ type: 'application/json', limit: '256kb', inflate: false }),
+  createPaynowDiscordHandler(),
+  (error, _req, res, _next) => res.status(error.status === 413 ? 413 : 400).json({ error: 'Invalid webhook body' })
+);
 app.use(cookieParser(secret));
 app.use(express.urlencoded({ extended: false, limit: '12kb', parameterLimit: 30 }));
 app.use('/assets', express.static(publicDir, { maxAge: production ? '1d' : 0, index: false }));
