@@ -32,7 +32,7 @@ export function supporterMessage(order, linkedUserId, { goal = null, portraitUrl
     embeds: [{
       title: 'New Purchase Received!',
       color: 0x8cde9f,
-      description: `**${player}** has just shown their support to **StrafeMC**!\n\nThank you for helping us grow our community and keep the StrafeMC experience thriving. **We appreciate you!** <:mstar:1549078330844643411>\n\n<:event:1546137196778627072> **Supporter**\n${player}\n\n<:strafe2_icon:1549760947269410897> **Purchase**\n${products}\n\n<:store:1545793616742449195> **Store**\n[Visit our store](https://store.strafemc.net/)\n\n<:hura:1546137558855974933> **Community Goal**\n${goalProgress(goal)}`,
+      description: `**${player}** has just shown their support for **StrafeMC**!\n\nThank you for helping us grow our community and keep the StrafeMC experience thriving. **We appreciate you!** <:mstar:1549078330844643411>\n\n<:event:1546137196778627072> **Supporter**\n${player}\n\n<:strafe2_icon:1549760947269410897> **Purchase**\n${products}\n\n<:store:1545793616742449195> **Store**\n[Visit our store](https://store.strafemc.net/)\n\n<:hura:1546137558855974933> **Community Goal**\n${goalProgress(goal)}`,
       thumbnail: { url: portraitUrl || fallbackPortrait },
       footer: { text: 'StrafeMC . The Only Competitive Network You Need.' },
     }],

@@ -15,7 +15,7 @@
             <option value="<%= season.id %>" <%= season.id === board.season ? 'selected' : '' %>><%= season.name %><%= season.id === board.currentSeason ? ' · CURRENT' : '' %></option>
           <% }) %>
         </select>
-        <button type="submit">VIEW</button>
+        <noscript><button type="submit">Apply season</button></noscript>
       </form>
     <% } %>
   </div>
@@ -46,7 +46,7 @@
               <% } else { %>
                 <div class="tier-entry-list">
                   <% column.entries.forEach((entry, index) => {
-                    const name = String(entry.displayName || entry.subjectId || 'Unknown');
+                    const name = plainMinecraftName(entry.displayName) || entry.subjectId || 'Unknown';
                     const points = Number(entry.points || 0);
                     const regionCode = String(entry.region || '').toUpperCase();
                     const region = regionNames[regionCode] || regionCode;
@@ -63,11 +63,13 @@
                         <div class="team-roster">
                           <% if (Array.isArray(entry.members) && entry.members.length) { %>
                             <ul>
-                              <% entry.members.forEach(member => { %>
+                              <% entry.members.forEach(member => {
+                                const memberName = plainMinecraftName(member.playerName || member.name) || 'Unknown player';
+                              %>
                                 <li>
-                                  <button type="button" class="tier-entry roster-entry" data-player-profile data-player-id="<%= member.playerId || '' %>" data-name="<%= member.playerName || member.name || 'Unknown player' %>" data-region="<%= region %>" data-premium="<%= member.premium ? 'true' : 'false' %>" data-linked="<%= member.linked ? 'true' : 'false' %>" data-portrait="<%= member.profilePortraitUrl || '/assets/design/default-player-bust.svg' %>" aria-label="View <%= member.playerName || member.name || 'Unknown player' %>'s profile">
+                                  <button type="button" class="tier-entry roster-entry" data-player-profile data-player-id="<%= member.playerId || '' %>" data-name="<%= memberName %>" data-region="<%= region %>" data-premium="<%= member.premium ? 'true' : 'false' %>" data-linked="<%= member.linked ? 'true' : 'false' %>" data-portrait="<%= member.profilePortraitUrl || '/assets/design/default-player-bust.svg' %>" aria-label="View <%= memberName %>'s profile">
                                     <span class="entry-avatar"><img src="<%= member.portraitUrl || '/assets/design/default-player-bust.svg' %>" width="32" height="32" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-account-portrait></span>
-                                    <span class="entry-name"><%= member.playerName || member.name || 'Unknown player' %></span>
+                                    <span class="entry-name"><%= memberName %></span>
                                     <span class="entry-role"><%= String(member.role || 'MEMBER').toLowerCase() %></span>
                                   </button>
                                 </li>

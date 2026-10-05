@@ -12,8 +12,10 @@ import { accountPortraits, teamRosterPortraits, portraitOrigin } from './portrai
 import { serverStatus } from './server-status.js';
 import { createPaynowDiscordHandler } from './paynow-discord.js';
 import { startDiscordBot } from './discord-bot.js';
+import { plainMinecraftName } from './minecraft-text.js';
 
 const app = express();
+app.locals.plainMinecraftName = plainMinecraftName;
 const production = process.env.NODE_ENV === 'production';
 const secret = process.env.COOKIE_SECRET || randomBytes(32).toString('hex');
 if (production && (!process.env.COOKIE_SECRET || process.env.COOKIE_SECRET.length < 32 || /^(replace|change|example)/i.test(process.env.COOKIE_SECRET))) throw new Error('Set COOKIE_SECRET to at least 32 random characters in production.');
@@ -36,7 +38,7 @@ const money = (amount,currency) => {
 };
 const regionNames = { AS: 'Asia', EU: 'Europe', NA: 'North America', SA: 'South America', OC: 'Oceania', AF: 'Africa' };
 function tierColumns(entries) {
-  const ranked = [...entries].sort((a, b) => Number(b.points || 0) - Number(a.points || 0) || String(a.displayName || '').localeCompare(String(b.displayName || '')));
+  const ranked = [...entries].sort((a, b) => Number(b.points || 0) - Number(a.points || 0) || plainMinecraftName(a.displayName).localeCompare(plainMinecraftName(b.displayName)));
   const count = ranked.length;
   const columns = [{ id: 'S', name: 'S Tier', top: 0.001 }, { id: 'A', name: 'A Tier', top: 0.01 }, { id: 'B', name: 'B Tier', top: 0.05 }, { id: 'C', name: 'C Tier', top: 0.2 }, { id: 'F', name: 'F Tier', top: 1 }].map(tier => ({ ...tier, entries: [] }));
   let start = 0;
@@ -97,7 +99,7 @@ app.use((req, res, next) => {
   const session = req.signedCookies.store_session || randomBytes(24).toString('hex');
   if (!req.signedCookies.store_session) res.cookie('store_session', session, cookieOptions);
   req.storeSession = session;
-  res.locals = { path: req.path, csrf: csrf(session), minecraft: process.env.MINECRAFT_ADDRESS || 'play.strafemc.net', discord: httpsUrl(process.env.DISCORD_URL), heroImage: httpsUrl(process.env.HERO_IMAGE_URL), customerName: req.signedCookies.minecraft_name || '', pageTitle: 'StrafeMC', categories: [], regionNames, money };
+  res.locals = { path: req.path, csrf: csrf(session), minecraft: process.env.MINECRAFT_ADDRESS || 'strafemc.net', discord: httpsUrl(process.env.DISCORD_URL), heroImage: httpsUrl(process.env.HERO_IMAGE_URL), customerName: req.signedCookies.minecraft_name || '', pageTitle: 'StrafeMC', categories: [], regionNames, money };
   if (req.method === 'POST') {
     const given = Buffer.from(String(req.body._csrf || '')); const expected = Buffer.from(csrf(session));
     if (given.length !== expected.length || !timingSafeEqual(given, expected)) {

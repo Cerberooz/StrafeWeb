@@ -1,3 +1,61 @@
+// Keep the real select for form submission and a native fallback without JS.
+document.querySelectorAll('.checkout-card select, .season-switcher select').forEach(select => {
+  if (!select.options.length || select.multiple) return;
+  const wrapper = document.createElement('div'); wrapper.className = 'checkout-select';
+  const trigger = document.createElement('button'); trigger.type = 'button';
+  trigger.className = 'checkout-select-trigger'; trigger.id = `${select.id}-trigger`;
+  trigger.setAttribute('role', 'combobox'); trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false'); trigger.disabled = select.disabled;
+  const label = document.querySelector(`label[for="${CSS.escape(select.id)}"]`);
+  if (label) { label.id ||= `${select.id}-label`; label.htmlFor = trigger.id; trigger.setAttribute('aria-labelledby', `${label.id} ${trigger.id}`); }
+  const list = document.createElement('div'); list.className = 'checkout-select-options';
+  list.id = `${select.id}-options`; list.setAttribute('role', 'listbox'); list.hidden = true;
+  trigger.setAttribute('aria-controls', list.id);
+  if (label) list.setAttribute('aria-labelledby', label.id);
+  select.before(wrapper); wrapper.append(trigger, list, select);
+  const choices = [...select.options].map((option, index) => {
+    const item = document.createElement('button'); item.type = 'button'; item.tabIndex = -1;
+    item.className = 'checkout-select-option'; item.setAttribute('role', 'option');
+    item.textContent = option.text; item.disabled = option.disabled;
+    item.addEventListener('click', () => {
+      const changed = select.selectedIndex !== index;
+      select.selectedIndex = index;
+      close(true);
+      if (changed) select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    list.append(item); return item;
+  });
+  const refresh = () => {
+    trigger.textContent = select.options[select.selectedIndex]?.text || 'Choose an option';
+    choices.forEach((item, index) => item.setAttribute('aria-selected', String(index === select.selectedIndex)));
+    trigger.removeAttribute('aria-invalid');
+  };
+  const close = focus => { list.hidden = true; trigger.setAttribute('aria-expanded', 'false'); if (focus) trigger.focus(); };
+  const open = () => { list.hidden = false; trigger.setAttribute('aria-expanded', 'true'); (choices[select.selectedIndex] || choices.find(item => !item.disabled))?.focus(); };
+  trigger.addEventListener('click', () => list.hidden ? open() : close(false));
+  wrapper.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !list.hidden) { event.preventDefault(); close(true); return; }
+    if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const enabled = choices.filter(item => !item.disabled);
+    if (!enabled.length) return;
+    if (list.hidden) { open(); return; }
+    const index = enabled.indexOf(document.activeElement);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? enabled.length - 1
+      : (index + (event.key === 'ArrowDown' ? 1 : -1) + enabled.length) % enabled.length;
+    enabled[next].focus();
+  });
+  document.addEventListener('click', event => { if (!wrapper.contains(event.target)) close(false); });
+  wrapper.addEventListener('focusout', event => { if (!wrapper.contains(event.relatedTarget)) close(false); });
+  select.addEventListener('change', refresh);
+  if (select.closest('.season-switcher')) {
+    select.addEventListener('change', () => select.form?.requestSubmit());
+  }
+  select.addEventListener('invalid', event => { event.preventDefault(); trigger.setAttribute('aria-invalid', 'true'); trigger.focus(); });
+  select.form?.addEventListener('reset', () => setTimeout(refresh, 0));
+  refresh(); select.hidden = true;
+});
+
 const serverStatusNode = document.querySelector('[data-server-status]');
 if (serverStatusNode) {
   let loadingStatus = false;

@@ -1,5 +1,5 @@
 // One shared, bounded request per cache interval; visitors never choose the target.
-const address = process.env.SERVER_STATUS_ADDRESS || process.env.MINECRAFT_ADDRESS || 'play.strafemc.net';
+const address = process.env.SERVER_STATUS_ADDRESS || process.env.MINECRAFT_ADDRESS || 'strafemc.net';
 if (!/^[a-zA-Z0-9.:[\]-]{1,255}$/.test(address)) throw new Error('Invalid SERVER_STATUS_ADDRESS.');
 let cached = { state: 'unavailable', players: null };
 let expires = 0;

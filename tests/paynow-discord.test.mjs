@@ -219,7 +219,7 @@ test('embed matches the requested title, text and sampled reference color', () =
   assert.equal(message.embeds[0].title, 'New Purchase Received!');
   assert.equal(message.embeds[0].color, 0x8cde9f);
   assert.equal(message.embeds[0].description,
-    '**Cerberooz** has just shown their support to **StrafeMC**!\n\nThank you for helping us grow our community and keep the StrafeMC experience thriving. **We appreciate you!** <:mstar:1549078330844643411>\n\n<:event:1546137196778627072> **Supporter**\nCerberooz\n\n<:strafe2_icon:1549760947269410897> **Purchase**\nLegend Rank, Keys\n\n<:store:1545793616742449195> **Store**\n[Visit our store](https://store.strafemc.net/)\n\n<:hura:1546137558855974933> **Community Goal**\nProgress temporarily unavailable.');
+    '**Cerberooz** has just shown their support for **StrafeMC**!\n\nThank you for helping us grow our community and keep the StrafeMC experience thriving. **We appreciate you!** <:mstar:1549078330844643411>\n\n<:event:1546137196778627072> **Supporter**\nCerberooz\n\n<:strafe2_icon:1549760947269410897> **Purchase**\nLegend Rank, Keys\n\n<:store:1545793616742449195> **Store**\n[Visit our store](https://store.strafemc.net/)\n\n<:hura:1546137558855974933> **Community Goal**\nProgress temporarily unavailable.');
   assert.equal(message.content, '');
   assert.equal(supporterMessage(order, '@everyone').content, '');
 });
