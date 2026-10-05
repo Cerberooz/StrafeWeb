@@ -68,7 +68,7 @@ No credentials or products are fabricated. Missing credentials show empty store 
 
 ## Discord purchase notifications
 
-The webapp can receive PayNow's signed `ON_ORDER_COMPLETED` JSON webhook at `POST /webhooks/paynow` and publish the supporter embed as **store.strafemc.net**. Its title is **Thank you for your support!**, its accent color is **#B3ECFF** (sampled from the supplied reference), and its description is:
+The webapp can receive PayNow's signed `ON_ORDER_COMPLETED` JSON webhook at `POST /webhooks/paynow` and publish the supporter embed as **store.strafemc.net**. Its title is **Thank you for your support!**, its accent color is **#8CDE9F** (sampled from the supplied reference), and its description is:
 
 ```text
 ✦ **NEW STRAFEMC SUPPORTER**
@@ -80,7 +80,7 @@ Thank you for supporting **StrafeMC**.
 Your support helps us keep improving the network. 💙
 ```
 
-The webapp substitutes these placeholders from the signed order. It uses PayNow's `product_names` summary, falling back to the order-line names when absent. Billing details are not posted. Bot mode uses the bot's Discord server nickname, avatar and role color automatically; the embed sidebar stays #B3ECFF. Webhook mode defaults to the sender name `store.strafemc.net`. This integration does not require changes to StrafeAPI.
+The webapp substitutes these placeholders from the signed order. It uses PayNow's `product_names` summary, falling back to the order-line names when absent. Billing details are not posted. Bot mode uses the bot's Discord server nickname, avatar and role color automatically; the embed sidebar stays #8CDE9F. Webhook mode defaults to the sender name `store.strafemc.net`. This integration does not require changes to StrafeAPI.
 
 ### Bot setup (colored sender and online status)
 

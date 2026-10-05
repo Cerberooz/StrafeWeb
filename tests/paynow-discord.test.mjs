@@ -218,7 +218,7 @@ test('embed matches the requested title, text and sampled reference color', () =
   order.product_names = 'Legend Rank, Keys';
   const message = supporterMessage(order, 'store.strafemc.net');
   assert.equal(message.embeds[0].title, 'Thank you for your support!');
-  assert.equal(message.embeds[0].color, 0xb3ecff);
+  assert.equal(message.embeds[0].color, 0x8cde9f);
   assert.equal(message.embeds[0].description,
     '✦ **NEW STRAFEMC SUPPORTER**\n\n👤 **Cerberooz**\n📦 **Legend Rank, Keys**\n\nThank you for supporting **StrafeMC**.\nYour support helps us keep improving the network. 💙');
   assert.equal(message.content, undefined);

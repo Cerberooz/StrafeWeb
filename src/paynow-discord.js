@@ -28,7 +28,7 @@ export function supporterMessage(order, username, linkedUserId) {
     allowed_mentions: { parse: [] },
     embeds: [{
       title: 'Thank you for your support!',
-      color: 0xb3ecff,
+      color: 0x8cde9f,
       description: `✦ **NEW STRAFEMC SUPPORTER**\n\n👤 **${player}**\n📦 **${products}**\n\nThank you for supporting **StrafeMC**.\nYour support helps us keep improving the network. 💙`,
     }],
   }, linkedUserId);
