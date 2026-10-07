@@ -140,3 +140,5 @@
 
 /* Use hinted system glyphs for compact controls instead of the variable display font. */
 .button,.checkout-select-trigger,.checkout-select-option{font-family:Arial,Helvetica,sans-serif;font-synthesis:none;text-shadow:none}
+.profile-close svg{display:block;width:24px;height:24px;pointer-events:none}@media(max-width:650px){.profile-close svg{width:20px;height:20px}}
+.entry-avatar{border-radius:50%;background:transparent}

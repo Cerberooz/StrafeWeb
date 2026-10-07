@@ -31,10 +31,21 @@ function readPortrait(skin, playerId) {
   }
   // Identical 3D crop/camera for both account types. Never resolve cracked skins
   // by their offline UUID/name, which can display someone else's premium skin.
-  const bust = new URL(`/render/${identifier}/bust`, portraitOrigin);
+  // Render the complete model before framing it. The renderer's bust preset
+  // cuts at the waist, so shifting that image cannot reveal any lower body.
+  const bust = new URL(`/render/${identifier}/body`, portraitOrigin);
   bust.searchParams.set('size', '256');
-  bust.searchParams.set('yaw', '-20');
+  bust.searchParams.set('width', '256');
+  bust.searchParams.set('yaw', '20');
   bust.searchParams.set('pitch', '10');
+  bust.searchParams.set('zoom', '1.7');
+  bust.searchParams.set('offsetY', '0.36');
+  // A single walking frame gives the arms/shoulders a natural stance while
+  // remaining a static PNG shared by the row and profile, without animation.
+  bust.searchParams.set('pose', 'walk');
+  bust.searchParams.set('frame', '0.08');
+  bust.searchParams.set('leftArmPitch', '20');
+  bust.searchParams.set('rightArmPitch', '-20');
   if (skin.premium !== true) bust.searchParams.set('model', skin.model);
   return { portraitUrl: bust.href, profilePortraitUrl: bust.href };
 }
