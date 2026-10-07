@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { catalog, rankCategory, leaderboard, paynowReady, paynowProducts, jsonRequest, paynowHeaders } from './data.js';
 import { comparison, httpsUrl, rankImageHosts } from './markup.js';
-import { accountPortraits, teamRosterPortraits, portraitOrigin } from './portraits.js';
+import { accountPortraits, teamRosterPortraits, portraitOrigins } from './portraits.js';
 import { serverStatus } from './server-status.js';
 import { createPaynowDiscordHandler } from './paynow-discord.js';
 import { startDiscordBot } from './discord-bot.js';
@@ -73,7 +73,8 @@ app.use((req, res, next) => {
       ...(options.categories || []).flatMap(category => category.packages.map(pkg => pkg.image)),
       ...(options.comparisonPackages || []).map(pkg => pkg.image)];
     const sources = new Set(["'self'", ...markupImageSources]);
-    if (view === 'tiers' && options.board?.entries.some(entry => entry.portraitUrl || entry.members?.some(member => member.portraitUrl)) && portraitOrigin) sources.add(portraitOrigin);
+    if (view === 'tiers' && options.board?.entries.some(entry => entry.portraitUrl || entry.members?.some(member => member.portraitUrl)))
+      for (const origin of portraitOrigins) sources.add(origin);
     for (const image of images) { const url = httpsUrl(image); if (url) sources.add(new URL(url).origin); }
     const policy = res.getHeader('Content-Security-Policy');
     if (typeof policy === 'string') res.setHeader('Content-Security-Policy', policy.replace(/(^|;)img-src[^;]*/, `$1img-src ${[...sources].join(' ')}`));

@@ -26,7 +26,7 @@ test('large boards retain every appearance while bounding API concurrency', asyn
     const result = await accountPortraits(entries);
     assert.equal(calls, 26);
     assert.ok(peak <= 16);
-    assert.ok(result.every(entry => entry.profilePortraitUrl === `https://render.crafty.gg/3d/bust/${textureHash}`));
+    assert.ok(result.every(entry => entry.profilePortraitUrl === `https://api.example.invalid/v1/accounts/portraits/${textureHash}/classic.png`));
     assert.ok(result.every(entry => entry.portraitUrl === entry.profilePortraitUrl));
     const priorCalls = calls;
     await accountPortraits([entries.at(-1)]);

@@ -2,8 +2,15 @@ import { jsonRequest } from './data.js';
 
 const apiBase = process.env.API_SERVER_BASE_URL || process.env.POINTS_API_BASE_URL;
 const apiKey = process.env.API_SERVER_API_KEY || process.env.POINTS_API_KEY;
-// Fixed CDN origin; no account-controlled URL is embedded in a page.
+// Trusted renderer origins; no account-controlled URL is embedded in a page.
 export const portraitOrigin = 'https://render.crafty.gg';
+export const portraitOrigins = [portraitOrigin];
+if (apiBase) {
+  try {
+    const configured = new URL(apiBase);
+    if (['https:', 'http:'].includes(configured.protocol)) portraitOrigins.push(configured.origin);
+  } catch { /* Invalid API configuration is handled by the appearance lookup. */ }
+}
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TTL = 45_000;
@@ -16,7 +23,6 @@ let activeBatches = 0;
 function readPortrait(skin, playerId) {
   // Premium skins follow the verified Mojang UUID. Cracked players use only the
   // canonical texture synchronized from proxy SkinsRestorer, never an offline UUID or name.
-  let identifier = playerId;
   if (!skin || (skin.premium !== true && (!['classic', 'slim'].includes(skin.model) || typeof skin.textureUrl !== 'string'))) {
     throw new Error('Invalid account appearance');
   }
@@ -26,10 +32,13 @@ function readPortrait(skin, playerId) {
     if (texture.origin !== 'https://textures.minecraft.net' || texture.username || texture.password || texture.search || texture.hash || !hash) {
       throw new Error('Untrusted account texture');
     }
-    identifier = hash;
+    // Render canonical cracked skins on our API. The external renderer may reject
+    // texture-hash requests with 403 even though the saved Mojang texture is valid.
+    const bustUrl = new URL(`/v1/accounts/portraits/${hash}/${skin.model}.png`, apiBase).href;
+    return { portraitUrl: bustUrl, profilePortraitUrl: bustUrl };
   }
   // Share the exact bust URL so rows and profiles reuse the browser's CDN cache.
-  const bustUrl = `${portraitOrigin}/3d/bust/${identifier}`;
+  const bustUrl = `${portraitOrigin}/3d/bust/${playerId}`;
   return { portraitUrl: bustUrl, profilePortraitUrl: bustUrl };
 }
 

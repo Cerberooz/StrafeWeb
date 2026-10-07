@@ -1,8 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <path fill="#303e57" d="m47 139 41-11 13 119-66 9zm128-14 40 12 12 119-63-9z"/>
-  <path fill="#425c8b" d="m88 121 87 4 3 131H85z"/>
-  <path fill="#526780" d="m76 24 20-9 102 7-14 20z"/>
-  <path fill="#68768c" d="m76 24 108 18-4 98-104-14z"/>
-  <path fill="#3e4c62" d="m184 42 14-20-2 98-16 20z"/>
-  <path fill="#a3adba" d="M99 75h13v5H99zm55 8h13v5h-13z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Default Steve skin">
+  <path fill="#00a6a6" d="m47 139 41-11 13 119-66 9zm128-14 40 12 12 119-63-9z"/>
+  <path fill="#b98564" d="m43 183 49-9 9 73-66 9zm130-5 47 11 7 67-63-9z"/>
+  <path fill="#00b8b8" d="m88 121 87 4 3 131H85z"/>
+  <path fill="#009d9d" d="m128 153 16 1v102h-16z"/>
+  <path fill="#b98564" d="m116 125 30 1v15l-14 11-16-14z"/>
+  <path fill="#3f2c20" d="m76 24 20-9 102 7-14 20z"/>
+  <path fill="#6b4935" d="m184 42 14-20-2 98-16 20z"/>
+  <g transform="matrix(13.5 1.75 0 12.25 76 24)">
+    <path fill="#b98564" d="M0 0h8v8H0z"/>
+    <path fill="#36251b" d="M0 0h8v2H0zM0 2h1v1H0zM7 2h1v1H7z"/>
+    <path fill="#4a3224" d="M1 0h2v1H1zM5 1h2v1H5z"/>
+    <path fill="#c69473" d="M1 3h2v1H1zM5 3h2v1H5zM2 5h1v1H2z"/>
+    <path fill="#fff" d="M1 4h2v1H1zM5 4h2v1H5z"/>
+    <path fill="#524587" d="M2 4h1v1H2zM5 4h1v1H5z"/>
+    <path fill="#986345" d="M3 5h2v1H3z"/>
+    <path fill="#4a3021" d="M2 6h1v1H2zM5 6h1v1H5zM2 7h4v1H2z"/>
+    <path fill="#6b4230" d="M3 6h2v1H3z"/>
+  </g>
 </svg>
