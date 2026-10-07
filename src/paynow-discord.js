@@ -143,7 +143,7 @@ export function createPaynowDiscordHandler({ env = process.env, fetchImpl = glob
       accountPortraits([{ subjectId: playerId }]).catch(() => []),
     ]);
     // Canonical premium UUID / cracked texture from Strafe, using the existing cache.
-    const portraitUrl = appearances[0]?.portraitUrl?.replace('/3d/bust/', '/2d/head/');
+    const portraitUrl = appearances[0]?.portraitUrl?.replace('/bust?', '/face?');
     const message = supporterMessage(order, userId, { goal, portraitUrl });
     const messageId = await discordRequest(message);
     await save(marker, JSON.stringify({ messageId, message, channelId, discordUserId: discordId(userId) ? userId : null }));

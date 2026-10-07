@@ -26,7 +26,7 @@ test('large boards retain every appearance while bounding API concurrency', asyn
     const result = await accountPortraits(entries);
     assert.equal(calls, 26);
     assert.ok(peak <= 16);
-    assert.ok(result.every(entry => entry.profilePortraitUrl === `https://api.example.invalid/v1/accounts/portraits/${textureHash}/classic.png`));
+    assert.ok(result.every(entry => entry.profilePortraitUrl === `https://skinrender.dev/render/texture:${textureHash}/bust?size=256&yaw=-20&pitch=10&model=classic`));
     assert.ok(result.every(entry => entry.portraitUrl === entry.profilePortraitUrl));
     const priorCalls = calls;
     await accountPortraits([entries.at(-1)]);
@@ -41,7 +41,7 @@ test('premium UUIDs override selected skins, and untrusted textures never reach 
   try {
     const { accountPortraits } = await import('../src/portraits.js?premium');
     const [premium] = await accountPortraits([{ subjectId: id(1) }]);
-    assert.equal(premium.profilePortraitUrl, `https://render.crafty.gg/3d/bust/${id(1)}`);
+    assert.equal(premium.profilePortraitUrl, `https://skinrender.dev/render/${id(1)}/bust?size=256&yaw=-20&pitch=10`);
     assert.equal(premium.portraitUrl, premium.profilePortraitUrl);
     globalThis.fetch = async () => new Response(JSON.stringify({ skins: {
       [id(2)]: { premium: false, linked: true, model: 'classic', textureUrl: 'https://untrusted.invalid/texture.png' },
