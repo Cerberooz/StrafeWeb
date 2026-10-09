@@ -156,7 +156,7 @@ app.get('/packages/:id', async (req, res) => {
 });
 app.get('/tiers', async (req, res) => {
   res.set('Cache-Control', 'no-store');
-  const mode = ['smp-teams', 'smp-solo', 'pvp'].includes(req.query.mode) ? req.query.mode : 'smp-teams';
+  const mode = ['smp-teams', 'smp-solo', 'pvp'].includes(req.query.mode) ? req.query.mode : 'smp-solo';
   const requestedSeason = typeof req.query.season === 'string' && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(req.query.season)
     ? req.query.season
     : null;

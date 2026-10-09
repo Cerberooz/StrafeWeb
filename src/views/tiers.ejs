@@ -3,7 +3,7 @@
   <div class="tiers-heading">
     <h1>Tiers</h1>
     <nav class="mode-switch" aria-label="Leaderboard category">
-      <a href="/tiers?mode=smp-teams" class="<%= mode !== 'pvp' ? 'selected' : '' %>" <%- mode !== 'pvp' ? 'aria-current="page"' : '' %>>SMP</a>
+      <a href="/tiers?mode=smp-solo" class="<%= mode !== 'pvp' ? 'selected' : '' %>" <%- mode !== 'pvp' ? 'aria-current="page"' : '' %>>SMP</a>
       <a href="/tiers?mode=pvp" class="<%= mode === 'pvp' ? 'selected' : '' %>" <%- mode === 'pvp' ? 'aria-current="page"' : '' %>>PVP</a>
     </nav>
     <% if (mode !== 'pvp' && board.seasons?.length) { %>
@@ -28,8 +28,8 @@
       </div>
       <div class="leaderboard-frame">
       <nav class="connected-tabs" aria-label="SMP leaderboard">
-        <a href="/tiers?mode=smp-teams<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-teams' ? 'selected' : '' %>" <%- mode === 'smp-teams' ? 'aria-current="page"' : '' %>><img src="/assets/design/Teams_Icon.png" alt=""><span>Team</span></a>
         <a href="/tiers?mode=smp-solo<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-solo' ? 'selected' : '' %>" <%- mode === 'smp-solo' ? 'aria-current="page"' : '' %>><img src="/assets/design/Solo_Icon.png" alt=""><span>Solo</span></a>
+        <a href="/tiers?mode=smp-teams<%= board.season ? '&season=' + encodeURIComponent(board.season) : '' %>" class="<%= mode === 'smp-teams' ? 'selected' : '' %>" <%- mode === 'smp-teams' ? 'aria-current="page"' : '' %>><img src="/assets/design/Teams_Icon.png" alt=""><span>Team</span></a>
       </nav>
       <% if (!board.entries.length) { %>
         <div class="tier-empty"><h2><%= board.unavailable ? 'Rankings temporarily unavailable.' : 'Rankings coming soon.' %></h2><p><%= board.unavailable ? 'Please try again in a moment.' : 'Standings will appear once points have been recorded.' %></p></div>
