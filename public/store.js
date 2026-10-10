@@ -56,6 +56,86 @@ document.querySelectorAll('.checkout-card select, .season-switcher select').forE
   refresh(); select.hidden = true;
 });
 
+// One shared preview lives outside the table's horizontal scrolling container.
+const perkPreviews = [...document.querySelectorAll('.comparison .perk-preview[data-perk-image]')];
+if (perkPreviews.length) {
+  const panel = document.createElement('figure');
+  panel.className = 'perk-image-preview'; panel.id = 'perk-image-preview';
+  panel.setAttribute('role', 'tooltip'); panel.hidden = true;
+  const image = document.createElement('img'); image.decoding = 'async'; image.referrerPolicy = 'no-referrer';
+  const status = document.createElement('p'); status.className = 'perk-image-preview-status';
+  status.setAttribute('role', 'status');
+  const caption = document.createElement('figcaption');
+  panel.append(image, status, caption); document.body.append(panel);
+  let active = null, pinned = false, closeTimer;
+  const position = () => {
+    if (!active || panel.hidden) return;
+    const target = active.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = window.innerHeight;
+    const scroller = active.closest('.comparison-scroll').getBoundingClientRect();
+    if (target.bottom < 0 || target.top > viewportHeight || target.right < Math.max(0, scroller.left) || target.left > Math.min(viewportWidth, scroller.right)) { close(); return; }
+    const box = panel.getBoundingClientRect();
+    const left = Math.min(viewportWidth - box.width - 12, Math.max(12, target.left + (target.width - box.width) / 2));
+    const below = target.bottom + 10;
+    const top = below + box.height <= viewportHeight - 12 ? below : Math.max(12, target.top - box.height - 10);
+    panel.style.left = `${Math.max(12, left)}px`; panel.style.top = `${top}px`;
+  };
+  const close = () => {
+    clearTimeout(closeTimer);
+    if (active) {
+      const trigger = active.querySelector('button');
+      trigger.setAttribute('aria-expanded', 'false'); trigger.removeAttribute('aria-describedby');
+    }
+    panel.hidden = true; active = null; pinned = false;
+  };
+  const show = entry => {
+    clearTimeout(closeTimer);
+    if (active !== entry) {
+      close(); active = entry;
+      image.hidden = true; status.hidden = false; status.textContent = 'Loading preview…';
+      caption.textContent = entry.dataset.perkImageAlt;
+      image.alt = entry.dataset.perkImageAlt;
+      // Set the source only on demand; the browser caches repeat previews.
+      image.src = entry.dataset.perkImage;
+      if (image.complete) {
+        image.hidden = !image.naturalWidth; status.hidden = !!image.naturalWidth;
+        if (!image.naturalWidth) status.textContent = 'Image unavailable.';
+      }
+    }
+    panel.hidden = false;
+    const trigger = entry.querySelector('button');
+    trigger.setAttribute('aria-expanded', 'true'); trigger.setAttribute('aria-describedby', panel.id);
+    position();
+  };
+  const deferClose = () => {
+    clearTimeout(closeTimer);
+    if (!pinned && !active?.contains(document.activeElement)) closeTimer = setTimeout(close, 150);
+  };
+  image.addEventListener('load', () => { image.hidden = false; status.hidden = true; position(); });
+  image.addEventListener('error', () => { image.hidden = true; status.hidden = false; status.textContent = 'Image unavailable.'; position(); });
+  for (const entry of perkPreviews) {
+    const trigger = entry.querySelector('button');
+    trigger.setAttribute('aria-controls', panel.id);
+    entry.addEventListener('pointerenter', event => { if (event.pointerType !== 'touch' && !pinned) show(entry); });
+    entry.addEventListener('pointerleave', deferClose);
+    trigger.addEventListener('focus', () => show(entry));
+    trigger.addEventListener('click', () => {
+      if (active === entry && pinned) close();
+      else { show(entry); pinned = true; }
+    });
+    entry.addEventListener('focusout', event => { if (!entry.contains(event.relatedTarget)) close(); });
+  }
+  panel.addEventListener('pointerenter', () => clearTimeout(closeTimer));
+  panel.addEventListener('pointerleave', deferClose);
+  document.addEventListener('pointerdown', event => { if (active && !active.contains(event.target) && !panel.contains(event.target)) close(); });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && active) { event.preventDefault(); close(); }
+  });
+  document.addEventListener('scroll', position, { capture: true, passive: true });
+  window.addEventListener('resize', position);
+}
+
 const serverStatusNode = document.querySelector('[data-server-status]');
 if (serverStatusNode) {
   let loadingStatus = false;
@@ -144,6 +224,10 @@ if (tierInformation) {
   const trigger = tierInformation.querySelector('[data-information-trigger]');
   const panel = tierInformation.querySelector('.information-panel');
   const tabs = [...panel.querySelectorAll('[role="tab"]')];
+  const fitPanel = () => {
+    if (panel.hidden) return;
+    panel.style.maxHeight = `${Math.max(80, window.innerHeight - Math.max(0, panel.getBoundingClientRect().top) - 12)}px`;
+  };
   const close = (restoreFocus = false) => {
     panel.hidden = true;
     trigger.setAttribute('aria-expanded', 'false');
@@ -156,11 +240,13 @@ if (tierInformation) {
       item.tabIndex = selected ? 0 : -1;
       document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
     }
+    fitPanel();
   };
   trigger.addEventListener('click', () => {
     const opening = panel.hidden;
     panel.hidden = !opening;
     trigger.setAttribute('aria-expanded', String(opening));
+    fitPanel();
     if (opening) tabs.find(tab => tab.getAttribute('aria-selected') === 'true').focus();
   });
   tabs.forEach((tab, index) => {
@@ -190,6 +276,21 @@ if (tierInformation) {
     }
   });
   const kitImage = panel.querySelector('[data-season-kit]');
+  window.addEventListener('resize', fitPanel);
+  document.addEventListener('scroll', fitPanel, { capture: true, passive: true });
+  panel.querySelectorAll('.season-kit-content img').forEach(image => {
+    const unavailable = () => {
+      if (image.dataset.kitFailed) return;
+      image.dataset.kitFailed = 'true';
+      image.hidden = true;
+      if (image.classList.contains('kit-icon')) return;
+      const note = document.createElement('p');
+      note.className = 'kit-image-error'; note.textContent = 'Kit image is unavailable.';
+      image.after(note);
+    };
+    image.addEventListener('error', unavailable, { once: true });
+    if (image.complete && image.naturalWidth === 0) unavailable();
+  });
   if (kitImage) {
     const unavailable = () => {
       kitImage.hidden = true;

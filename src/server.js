@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { catalog, rankCategory, leaderboard, paynowReady, paynowProducts, jsonRequest, paynowHeaders } from './data.js';
 import { comparison, httpsUrl, rankImageHosts } from './markup.js';
+import { renderKitHtml } from './kit-markup.js';
 import { accountPortraits, teamRosterPortraits, portraitOrigins } from './portraits.js';
 import { serverStatus } from './server-status.js';
 import { createPaynowDiscordHandler } from './paynow-discord.js';
@@ -70,6 +71,7 @@ app.use((req, res, next) => {
     // Product artwork comes from the trusted provider API, separately from HTML
     // descriptions. Permit only the specific origins used by this response.
     const images = [res.locals.heroImage, options.pkg?.image, options.kitImageUrl,
+      ...(options.kitContent?.imageUrls || []),
       ...(options.categories || []).flatMap(category => category.packages.map(pkg => pkg.image)),
       ...(options.comparisonPackages || []).map(pkg => pkg.image)];
     const sources = new Set(["'self'", ...markupImageSources]);
@@ -167,7 +169,8 @@ app.get('/tiers', async (req, res) => {
   const season = board.seasons?.find(item => item.id === board.season);
   const kitImageUrl = typeof season?.kitImageUrl === 'string' && season.kitImageUrl.length <= 2048
     ? httpsUrl(season.kitImageUrl) : '';
-  res.render('tiers', { pageTitle: 'Tiers', mode, board, columns, kitImageUrl });
+  const kitContent = renderKitHtml(typeof season?.kitHtml === 'string' ? season.kitHtml : '', { imageUrl: kitImageUrl });
+  res.render('tiers', { pageTitle: 'Tiers', mode, board, columns, kitImageUrl, kitContent });
 });
 app.get('/checkout', async (req, res) => {
   res.set('Cache-Control', 'no-store');

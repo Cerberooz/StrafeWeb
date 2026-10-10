@@ -1,0 +1,49 @@
+{
+  "minecraftVersion": "1.21.4",
+  "source": "Official Mojang Minecraft Java Edition client",
+  "metadataUrl": "https://piston-meta.mojang.com/v1/packages/010c66f4559d4647c282d581a451cda6d45777db/1.21.4.json",
+  "clientUrl": "https://piston-data.mojang.com/v1/objects/a7e5a6024bfd3cd614625aa05629adf760020304/client.jar",
+  "clientSha1": "a7e5a6024bfd3cd614625aa05629adf760020304",
+  "files": [
+    {
+      "file": "netherite_chestplate.png",
+      "archiveEntry": "assets/minecraft/textures/item/netherite_chestplate.png",
+      "sha256": "2a8be1d0598d7e9e0f26340dfb8df695e47e9bdbba65b13970f17b45c29f7160"
+    },
+    {
+      "file": "tnt_minecart.png",
+      "archiveEntry": "assets/minecraft/textures/item/tnt_minecart.png",
+      "sha256": "3e3df6e27f67676dca407ddf16930fcc08daa96dbf01c694f38f547b2d8b6673"
+    },
+    {
+      "file": "end_crystal.png",
+      "archiveEntry": "assets/minecraft/textures/item/end_crystal.png",
+      "sha256": "1a75f035d740b3f4f269bbdddfa4cca59c406a43b6c6212bafadbb26db34afd3"
+    },
+    {
+      "file": "mace.png",
+      "archiveEntry": "assets/minecraft/textures/item/mace.png",
+      "sha256": "24df4103c5aca3109b55af831878f2c22e804b5d2774b801146beae0bbebafe9"
+    },
+    {
+      "file": "tipped_arrow_base.png",
+      "archiveEntry": "assets/minecraft/textures/item/tipped_arrow_base.png",
+      "sha256": "351ce843de15f759bd30f62de7843b100db113bee7ea97a697e0c4f02d87e0f3"
+    },
+    {
+      "file": "tipped_arrow_head.png",
+      "archiveEntry": "assets/minecraft/textures/item/tipped_arrow_head.png",
+      "sha256": "848f5d47558cf681b17133bc98ee82ad0d4a620bd18206b2d21ecff084248e8b"
+    },
+    {
+      "file": "clock.png",
+      "archiveEntry": "assets/minecraft/textures/item/clock_00.png",
+      "sha256": "52652043a299f6d27da9229f1ccadd64e94018e6126c0bb2cbdf283bec114d87"
+    },
+    {
+      "file": "heart.png",
+      "archiveEntry": "assets/minecraft/textures/gui/sprites/hud/heart/full.png",
+      "sha256": "fbc682e09ae677d82fb9bd638eae2fef0e75d3dcb2f556ec9d693fc1ba1321c9"
+    }
+  ]
+}

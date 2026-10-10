@@ -22,10 +22,12 @@
     </div>
     <div id="information-kit" role="tabpanel" aria-labelledby="information-kit-tab" tabindex="0" hidden>
       <h2>Recommended Kit for <%= board.seasonName || 'this season' %></h2>
-      <% if (kitImageUrl) { %>
+      <% if (kitContent.html) { %>
+        <div class="season-kit-content"><%- kitContent.html %></div>
+      <% } else if (kitImageUrl) { %>
         <img class="season-kit-image" src="<%= kitImageUrl %>" alt="Recommended kit for <%= board.seasonName || 'this season' %>" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-season-kit>
       <% } %>
-      <p class="kit-unavailable" data-kit-unavailable <%- kitImageUrl ? 'hidden' : '' %>>Kit recommendation is not available for this season yet.</p>
+      <p class="kit-unavailable" data-kit-unavailable <%- kitImageUrl || kitContent.html ? 'hidden' : '' %>>Kit recommendation is not available for this season yet.</p>
     </div>
   </section>
 </div>

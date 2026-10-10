@@ -79,6 +79,30 @@ Credentials, explicit ports (including `:443`), non-HTTPS URLs and unlisted host
 
 Numeric `width` and `height`, plus text `alt`, are permitted. The renderer removes inline styles, event handlers, scripts, iframes, forms, SVG, and all other attributes/tags. Images are constrained to `max-width: min(150px, 100%)`, `max-height: 56px`, and `object-fit: contain`.
 
+### Optional hover images
+
+Add `data-hover-image` to a perk's `<li>` to show an image preview while hovering over its table value. The cell keeps its normal value and adds a small **Preview** button. Keyboard users can focus that button; touch users can tap it. Click/tap pins the preview, and tapping again, clicking outside, moving keyboard focus away, or pressing Escape closes it.
+
+```html
+<li data-perk="Daily kit"
+    data-hover-image="https://images.example.com/kits/vip.png"
+    data-hover-alt="VIP daily kit contents">
+  <value>VIP</value>
+</li>
+
+<li data-perk="Particle Trails" data-enabled="true"
+    data-hover-image="https://images.example.com/cosmetics/trails.png"
+    data-hover-alt="Available particle trails"></li>
+```
+
+- `data-hover-image`: one public HTTPS image URL per perk cell, from an exact hostname in `RANK_IMAGE_HOSTS`. Each rank can supply its own image for the same row. For example, set `RANK_IMAGE_HOSTS=images.example.com` and restart/redeploy the webapp before using the example host. Replace example URLs with your real image URLs.
+- `data-hover-alt`: optional plain-text description, up to 200 characters. It supplies the image's alternative text and the preview caption. Defaults to the perk name followed by `preview`.
+- Put these attributes on `<li>`, alongside `data-perk`, rather than on `<value>` or `<img>`. They are formatter metadata; arbitrary data attributes in rich HTML are still removed.
+- Boolean values still take precedence over `<value>`; an optional hover image works with either boolean or rich/scalar cells.
+- Without `data-hover-image`, the cell renders as before. A rejected URL also leaves the ordinary cell intact and adds no preview button.
+
+Hover images load only when the preview opens, with no referrer. The browser caches repeat views. A failed image shows **Image unavailable.** The dark preview panel matches the store's borders, corners, typography and muted caption colors; images retain their aspect ratio within a 360px-wide panel and a 260px height limit, reduced for smaller viewports. The panel floats outside the horizontally scrolling table so it is not clipped by the table on mobile. Table row and column alignment stays intact because the image is outside the cell layout. Preview interaction requires browser JavaScript; the normal value remains visible without it.
+
 ## Multiple groups: complete example
 
 Save the following equivalent structure in each rank package, changing values only. It demonstrates short copy, scalar value, booleans, rich values, an image, two sections, and normal long-description HTML.

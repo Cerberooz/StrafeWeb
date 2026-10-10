@@ -51,7 +51,12 @@ export function parseDescription(description) {
         if (!key || rows.has(key)) return;
         const enabled = $(li).attr('data-enabled');
         const value = enabled !== undefined ? (enabled.toLowerCase() === 'true' ? '<span class="perk-check" aria-label="Included">✓</span>' : '<span class="muted" aria-label="Not included">—</span>') : richHtml($(li).find('value').first().html() ?? $(li).html());
-        rows.set(key, value || '<span class="muted">—</span>');
+        const cell = value || '<span class="muted">—</span>';
+        const preview = rankImageUrl($(li).attr('data-hover-image'));
+        const previewAlt = (($(li).attr('data-hover-alt') || '').trim() || `${key} preview`).slice(0, 200);
+        rows.set(key, preview
+          ? `<div class="perk-preview" data-perk-image="${escapeHtml(preview)}" data-perk-image-alt="${escapeHtml(previewAlt)}"><div class="perk-preview-value">${cell}</div><button class="perk-preview-trigger" type="button" aria-label="Preview ${escapeHtml(key)} image" aria-expanded="false">Preview</button></div>`
+          : cell);
       });
       if (rows.size) sections.set(title, rows);
     }
