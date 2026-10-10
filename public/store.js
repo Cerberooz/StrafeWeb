@@ -184,7 +184,6 @@ if (playerProfile) {
   const portraitNode = playerProfile.querySelector('[data-profile-portrait]');
   const showPortrait = visible => {
     portraitNode.hidden = !visible;
-    portraitNode.parentElement.hidden = !visible;
   };
   portraitNode.addEventListener('load', () => showPortrait(portraitNode.hasAttribute('src') && portraitNode.naturalWidth > 0));
   portraitNode.addEventListener('error', () => {
