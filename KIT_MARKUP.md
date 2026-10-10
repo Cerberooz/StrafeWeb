@@ -9,7 +9,7 @@ The **Tiers → Information → Kit** tab renders a small HTML fragment from the
 3. Copy [examples/season-1-kit.html](examples/season-1-kit.html) into `kit_html` and save. The example contains your Bliss SMP x Diamond SMP title, original inventory screenshot, five bans and three limits.
 4. Wait up to 15 seconds for cached season metadata to refresh, then refresh the page.
 
-The example screenshot and vanilla icons ship with the WebApp as local assets, so their URLs do not expire. No Storage bucket or image-host environment setting is required for the example. Keep the `public/kits` and `public/minecraft` directories in deployments; the build copies them into `dist/public`.
+The example uses your public Supabase screenshot URL and local vanilla icons. The image link has no signed expiry; it stays available while the file and bucket remain public. No image-host environment setting is required for the example. A local screenshot copy is also available at `/assets/kits/season-1-kit.png`. Keep the `public/kits` and `public/minecraft` directories in deployments; the build copies them into `dist/public`.
 
 `kit_html` is optional. Empty or fully removed content falls back to the existing `kit_image_url`, then the unavailable message. An HTML fragment replaces the old image-only layout; images appear wherever you put them inside it. Each season has independent content. This feature does not change the Points tab.
 
