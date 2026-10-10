@@ -172,10 +172,9 @@ document.querySelectorAll('form').forEach(form => form.addEventListener('submit'
   if (button) { button.disabled = true; button.textContent = 'Please wait…'; }
 }));
 document.querySelectorAll('[data-account-portrait]').forEach(image => {
-  // Keep the reserved image slot if the render CDN is unavailable.
-  const fallback = () => { image.src = '/assets/design/default-player-bust.svg'; };
-  image.addEventListener('error', fallback, { once: true });
-  if (image.complete && image.naturalWidth === 0) fallback();
+  const hideUnavailable = () => { image.hidden = true; image.removeAttribute('src'); };
+  image.addEventListener('error', hideUnavailable, { once: true });
+  if (image.complete && image.naturalWidth === 0) hideUnavailable();
 });
 const playerProfile = document.querySelector('.player-profile');
 if (playerProfile) {
@@ -183,14 +182,24 @@ if (playerProfile) {
   const regionNode = playerProfile.querySelector('[data-profile-region]');
   const identityNode = playerProfile.querySelector('[data-profile-identity]');
   const portraitNode = playerProfile.querySelector('[data-profile-portrait]');
+  const showPortrait = visible => {
+    portraitNode.hidden = !visible;
+    portraitNode.parentElement.hidden = !visible;
+  };
+  portraitNode.addEventListener('load', () => showPortrait(portraitNode.hasAttribute('src') && portraitNode.naturalWidth > 0));
   portraitNode.addEventListener('error', () => {
-    if (!portraitNode.src.endsWith('/assets/design/default-player-bust.svg')) portraitNode.src = '/assets/design/default-player-bust.svg';
+    showPortrait(false);
+    portraitNode.removeAttribute('src');
   });
   document.querySelectorAll('[data-player-profile]').forEach(button => button.addEventListener('click', async () => {
     const playerName = button.dataset.name || 'Player';
     nameNode.textContent = playerName;
     regionNode.textContent = button.dataset.region || 'Region unavailable';
-    portraitNode.src = button.dataset.portrait || '/assets/design/default-player-bust.svg';
+    showPortrait(false);
+    if (button.dataset.portrait) {
+      portraitNode.src = button.dataset.portrait;
+      if (portraitNode.complete && portraitNode.naturalWidth > 0) showPortrait(true);
+    } else portraitNode.removeAttribute('src');
     const premium = button.dataset.premium === 'true';
     const linked = button.dataset.linked === 'true';
     identityNode.replaceChildren();

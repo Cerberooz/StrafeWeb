@@ -39,7 +39,15 @@ const money = (amount,currency) => {
 };
 const regionNames = { AS: 'Asia', EU: 'Europe', NA: 'North America', SA: 'South America', OC: 'Oceania', AF: 'Africa' };
 function tierColumns(entries) {
-  const ranked = [...entries].sort((a, b) => Number(b.points || 0) - Number(a.points || 0) || plainMinecraftName(a.displayName).localeCompare(plainMinecraftName(b.displayName)));
+  // Match the API and plugin: points descending, then UUID ascending. Avoid
+  // locale/name sorting so renames and host locales cannot change tied positions.
+  const ranked = [...entries].sort((a, b) => {
+    const points = Number(b.points || 0) - Number(a.points || 0);
+    if (points) return points;
+    const aId = String(a.subjectId || '').toLowerCase();
+    const bId = String(b.subjectId || '').toLowerCase();
+    return aId < bId ? -1 : aId > bId ? 1 : 0;
+  }).map((entry, index) => ({ ...entry, rank: index + 1 }));
   const count = ranked.length;
   const columns = [{ id: 'S', name: 'S Tier', top: 0.001 }, { id: 'A', name: 'A Tier', top: 0.01 }, { id: 'B', name: 'B Tier', top: 0.05 }, { id: 'C', name: 'C Tier', top: 0.2 }, { id: 'F', name: 'F Tier', top: 1 }].map(tier => ({ ...tier, entries: [] }));
   let start = 0;

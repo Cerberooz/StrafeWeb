@@ -53,8 +53,8 @@
                     const rank = Number(entry.rank || index + 1);
                   %>
                     <% if (mode === 'smp-solo') { %>
-                      <button type="button" class="tier-entry solo-entry" data-player-profile data-player-id="<%= entry.subjectId || '' %>" data-name="<%= name %>" data-points="<%= points %>" data-region="<%= region %>" data-premium="<%= entry.premium ? 'true' : 'false' %>" data-linked="<%= entry.linked ? 'true' : 'false' %>" data-portrait="<%= entry.profilePortraitUrl || '/assets/design/default-player-bust.svg' %>" aria-label="View <%= name %>'s profile">
-                        <span class="entry-avatar"><img src="<%= entry.portraitUrl || '/assets/design/default-player-bust.svg' %>" width="32" height="32" alt="" loading="<%= index < 8 ? 'eager' : 'lazy' %>" decoding="async" referrerpolicy="no-referrer" data-account-portrait></span>
+                      <button type="button" class="tier-entry solo-entry" data-player-profile data-player-id="<%= entry.subjectId || '' %>" data-name="<%= name %>" data-points="<%= points %>" data-region="<%= region %>" data-premium="<%= entry.premium ? 'true' : 'false' %>" data-linked="<%= entry.linked ? 'true' : 'false' %>" data-portrait="<%= entry.profilePortraitUrl || '' %>" aria-label="View <%= name %>'s profile">
+                        <span class="entry-avatar"><% if (entry.portraitUrl) { %><img src="<%= entry.portraitUrl %>" width="32" height="32" alt="" loading="<%= index < 8 ? 'eager' : 'lazy' %>" decoding="async" referrerpolicy="no-referrer" data-account-portrait><% } %></span>
                         <span class="entry-name"><%= name %></span><strong class="entry-points mono"><%= points.toLocaleString('en') %></strong>
                       </button>
                     <% } else { %>
@@ -67,8 +67,8 @@
                                 const memberName = plainMinecraftName(member.playerName || member.name) || 'Unknown player';
                               %>
                                 <li>
-                                  <button type="button" class="tier-entry roster-entry" data-player-profile data-player-id="<%= member.playerId || '' %>" data-name="<%= memberName %>" data-region="<%= region %>" data-premium="<%= member.premium ? 'true' : 'false' %>" data-linked="<%= member.linked ? 'true' : 'false' %>" data-portrait="<%= member.profilePortraitUrl || '/assets/design/default-player-bust.svg' %>" aria-label="View <%= memberName %>'s profile">
-                                    <span class="entry-avatar"><img src="<%= member.portraitUrl || '/assets/design/default-player-bust.svg' %>" width="32" height="32" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-account-portrait></span>
+                                  <button type="button" class="tier-entry roster-entry" data-player-profile data-player-id="<%= member.playerId || '' %>" data-name="<%= memberName %>" data-region="<%= region %>" data-premium="<%= member.premium ? 'true' : 'false' %>" data-linked="<%= member.linked ? 'true' : 'false' %>" data-portrait="<%= member.profilePortraitUrl || '' %>" aria-label="View <%= memberName %>'s profile">
+                                    <span class="entry-avatar"><% if (member.portraitUrl) { %><img src="<%= member.portraitUrl %>" width="32" height="32" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-account-portrait><% } %></span>
                                     <span class="entry-name"><%= memberName %></span>
                                     <span class="entry-role"><%= String(member.role || 'MEMBER').toLowerCase() %></span>
                                   </button>
@@ -96,7 +96,7 @@
 <dialog class="player-profile" aria-labelledby="profile-name">
   <form method="dialog"><button type="submit" class="profile-close" aria-label="Close profile"><svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></button></form>
   <div class="profile-content">
-    <div class="profile-avatar"><img data-profile-portrait src="/assets/design/default-player-bust.svg" width="116" height="116" referrerpolicy="no-referrer" decoding="async" alt=""></div>
+    <div class="profile-avatar" hidden><img data-profile-portrait hidden width="116" height="116" referrerpolicy="no-referrer" decoding="async" alt=""></div>
     <h2 id="profile-name" data-profile-name>Player</h2>
     <div class="profile-region" data-profile-region>Asia</div>
     <div class="profile-identities" data-profile-identity aria-label="Account identity"></div>
